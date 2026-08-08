@@ -3,17 +3,16 @@ import '../models/user_model.dart';
 import '../models/exercise_model.dart';
 import '../models/result_model.dart';
 import '../models/weekly_plan_model.dart';
-import '../models/performance_test_model.dart';
+import '../models/performance_test_model.dart'; // NEU: Modell-Import
 import '../services/exercise_service.dart';
 import '../services/plan_service.dart';
 import '../services/result_service.dart';
-import '../services/test_service.dart';
+import '../services/test_service.dart'; // NEU: Service-Import
 import '../screens/exercise_history_screen.dart';
-import '../screens/take_test_screen.dart';
-import '../screens/player_stats_overview_screen.dart';
+import '../screens/take_test_screen.dart'; // NEU: Erfassungs-Bildschirm
 import 'user_avatar_widget.dart';
 
-/// Interaktives Wochen-Dashboard für Spieler mit Zielen, Avataren & Statistik-Link
+/// Interaktives Wochen-Dashboard für Spieler inklusive Leistungstest-Kachel
 class PlayerDashboardWidget extends StatefulWidget {
   final AppUser user;
 
@@ -27,7 +26,7 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
   final PlanService _planService = PlanService();
   final ExerciseService _exerciseService = ExerciseService();
   final ResultService _resultService = ResultService();
-  final TestService _testService = TestService();
+  final TestService _testService = TestService(); // NEU: TestService Instanz
 
   late DateTime _selectedDate;
   late int _currentWeekNumber;
@@ -68,21 +67,11 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
     return DateTime(monday.year, monday.month, monday.day).add(Duration(days: dayIndex));
   }
 
-  void _showEnterOrEditResultDialog(Exercise exercise, {ExerciseResult? existingResult}) {
-    final bool isEditing = existingResult != null;
-
-    final scoreController = TextEditingController(
-      text: existingResult?.score?.toString() ?? '',
-    );
-    final hitsController = TextEditingController(
-      text: existingResult?.hits?.toString() ?? '',
-    );
-    final attemptsController = TextEditingController(
-      text: existingResult?.attempts?.toString() ?? '',
-    );
-    final timeController = TextEditingController(
-      text: existingResult?.timeInSeconds?.toString() ?? '',
-    );
+  void _showEnterResultDialog(Exercise exercise) {
+    final scoreController = TextEditingController();
+    final hitsController = TextEditingController();
+    final attemptsController = TextEditingController();
+    final timeController = TextEditingController();
 
     showDialog(
       context: context,
@@ -92,49 +81,17 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                isEditing ? 'Ergebnis korrigieren' : 'Ergebnis eintragen',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
+              const Text('Ergebnis eintragen',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text(
-                exercise.title,
-                style: TextStyle(fontSize: 15, color: Colors.deepOrange.shade700, fontWeight: FontWeight.w600),
-              ),
+              Text(exercise.title,
+                  style: TextStyle(fontSize: 14, color: Colors.grey.shade700)),
             ],
           ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (exercise.description.isNotEmpty) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(10.0),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Anleitung / Beschreibung:',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          exercise.description,
-                          style: const TextStyle(fontSize: 13, color: Colors.black87),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-
                 if (exercise.metricType == MetricType.score)
                   TextField(
                     controller: scoreController,
@@ -183,41 +140,33 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
             ElevatedButton(
               onPressed: () async {
                 final newResult = ExerciseResult(
-                  id: isEditing ? existingResult.id : '',
+                  id: '',
                   playerId: widget.user.uid,
                   exerciseId: exercise.id,
-                  timestamp: isEditing ? existingResult.timestamp : DateTime.now(),
+                  timestamp: DateTime.now(),
                   score: int.tryParse(scoreController.text.trim()),
                   hits: int.tryParse(hitsController.text.trim()),
                   attempts: int.tryParse(attemptsController.text.trim()),
                   timeInSeconds: int.tryParse(timeController.text.trim()),
                 );
 
-                if (isEditing) {
-                  await _resultService.updateResult(newResult);
-                } else {
-                  await _resultService.saveResult(newResult);
-                }
+                await _resultService.saveResult(newResult);
 
                 if (mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        isEditing
-                            ? 'Ergebnis erfolgreich korrigiert!'
-                            : 'Ergebnis gespeichert!',
-                      ),
+                    const SnackBar(
+                      content: Text('Ergebnis erfolgreich gespeichert!'),
                       backgroundColor: Colors.green,
                     ),
                   );
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: isEditing ? Colors.orange : Colors.green,
+                backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
               ),
-              child: Text(isEditing ? 'Aktualisieren' : 'Speichern'),
+              child: const Text('Speichern'),
             ),
           ],
         );
@@ -235,7 +184,7 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // PROFIL-HEADER MIT STATISTIK-BUTTON
+          // PROFIL-HEADER KARTEN
           Card(
             elevation: 2,
             child: Padding(
@@ -263,27 +212,13 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                       ],
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.bar_chart, color: Colors.deepOrange, size: 28),
-                    tooltip: 'Meine Statistiken',
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => PlayerStatsOverviewScreen(
-                            playerId: widget.user.uid,
-                            playerName: widget.user.name,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 16),
 
-          // WOCHEN-NAVIGATION
+          // WOCHEN-FILTER NAVIGATION
           Container(
             decoration: BoxDecoration(
               color: Theme.of(context).cardColor,
@@ -314,7 +249,7 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
           ),
           const SizedBox(height: 16),
 
-          // KACHEL FÜR WOCHEN-LEISTUNGSTEST
+          // NEU: KACHEL FÜR DEN ZUGEWIESENEN LEISTUNGSTEST DER WOCHE
           StreamBuilder<List<PerformanceTest>>(
             stream: _testService.getTestTemplates(),
             builder: (context, testTemplatesSnapshot) {
@@ -422,7 +357,7 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
             },
           ),
 
-          // ÜBUNGEN & GESPIELTE ERGEBNISSE
+          // DATEN LADEN: ÜBUNGEN, ERGEBNISSE & PLAN
           StreamBuilder<List<Exercise>>(
             stream: _exerciseService.getExercises(),
             builder: (context, exerciseSnapshot) {
@@ -458,31 +393,22 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                           final daySchedule = plan.days.firstWhere(
                             (d) => d.dayOfWeek == dayName,
                             orElse: () =>
-                                DailySchedule(dayOfWeek: dayName, scheduledExercises: []),
+                                DailySchedule(dayOfWeek: dayName, exerciseIds: []),
                           );
 
-                          for (var scheduledEx in daySchedule.scheduledExercises) {
+                          for (var exId in daySchedule.exerciseIds) {
                             final exercise = exercises.firstWhere(
-                              (e) => e.id == scheduledEx.exerciseId,
+                              (e) => e.id == exId,
                               orElse: () => Exercise(
-                                id: scheduledEx.exerciseId,
+                                id: exId,
                                 title: 'Unbekannte Übung',
                                 description: '',
                                 metricType: MetricType.score,
                               ),
                             );
 
-                            String targetInfo = '';
-                            if (scheduledEx.targetType == TargetType.duration &&
-                                scheduledEx.targetValue.isNotEmpty) {
-                              targetInfo = '⏱️ Vorgabe: ${scheduledEx.targetValue}';
-                            } else if (scheduledEx.targetType == TargetType.reps &&
-                                scheduledEx.targetValue.isNotEmpty) {
-                              targetInfo = '🔁 Vorgabe: ${scheduledEx.targetValue}';
-                            }
-
                             final existingResult = allResults
-                                .where((r) => r.exerciseId == scheduledEx.exerciseId)
+                                .where((r) => r.exerciseId == exId)
                                 .firstOrNull;
 
                             final isOverdue = existingResult == null &&
@@ -494,7 +420,6 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                               scheduledDate: dayDate,
                               result: existingResult,
                               isOverdue: isOverdue,
-                              targetInfo: targetInfo,
                             );
 
                             if (existingResult != null) {
@@ -577,48 +502,23 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                                                   style: const TextStyle(
                                                       fontWeight: FontWeight.bold),
                                                 ),
-                                                subtitle: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      '${item.dayName} (${item.scheduledDate.day}.${item.scheduledDate.month}.)' +
-                                                          (item.isOverdue
-                                                              ? ' • VERPASST / ÜBERFÄLLIG'
-                                                              : ''),
-                                                      style: TextStyle(
-                                                        color: item.isOverdue
-                                                            ? Colors.red
-                                                            : Colors.grey.shade700,
-                                                        fontWeight: item.isOverdue
-                                                            ? FontWeight.bold
-                                                            : FontWeight.normal,
-                                                      ),
-                                                    ),
-                                                    if (item.targetInfo.isNotEmpty) ...[
-                                                      const SizedBox(height: 2),
-                                                      Text(
-                                                        item.targetInfo,
-                                                        style: const TextStyle(
-                                                          fontWeight: FontWeight.bold,
-                                                          color: Colors.deepOrange,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                    if (item.exercise.description.isNotEmpty) ...[
-                                                      const SizedBox(height: 2),
-                                                      Text(
-                                                        item.exercise.description,
-                                                        style: const TextStyle(
-                                                            fontSize: 12, color: Colors.grey),
-                                                        maxLines: 2,
-                                                        overflow: TextOverflow.ellipsis,
-                                                      ),
-                                                    ],
-                                                  ],
+                                                subtitle: Text(
+                                                  '${item.dayName} (${item.scheduledDate.day}.${item.scheduledDate.month}.)' +
+                                                      (item.isOverdue
+                                                          ? ' • VERPASST / ÜBERFÄLLIG'
+                                                          : ''),
+                                                  style: TextStyle(
+                                                    color: item.isOverdue
+                                                        ? Colors.red
+                                                        : Colors.grey.shade700,
+                                                    fontWeight: item.isOverdue
+                                                        ? FontWeight.bold
+                                                        : FontWeight.normal,
+                                                  ),
                                                 ),
                                                 trailing: ElevatedButton(
                                                   onPressed: () =>
-                                                      _showEnterOrEditResultDialog(
+                                                      _showEnterResultDialog(
                                                           item.exercise),
                                                   style: ElevatedButton.styleFrom(
                                                     backgroundColor: item.isOverdue
@@ -673,72 +573,28 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                                                       color: Colors.white),
                                                 ),
                                                 title: Text(item.exercise.title),
-                                                subtitle: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      'Gespielt am ${item.dayName} • Ergebnis: $resultVal',
-                                                      style: const TextStyle(
-                                                          color: Colors.green,
-                                                          fontWeight:
-                                                              FontWeight.bold),
-                                                    ),
-                                                    if (item.targetInfo.isNotEmpty) ...[
-                                                      const SizedBox(height: 2),
-                                                      Text(
-                                                        item.targetInfo,
-                                                        style: const TextStyle(
-                                                          fontWeight: FontWeight.bold,
-                                                          color: Colors.deepOrange,
+                                                subtitle: Text(
+                                                  'Gespielt am ${item.dayName} • Ergebnis: $resultVal',
+                                                  style: const TextStyle(
+                                                      color: Colors.green,
+                                                      fontWeight:
+                                                          FontWeight.bold),
+                                                ),
+                                                trailing: IconButton(
+                                                  icon: const Icon(
+                                                      Icons.show_chart,
+                                                      color: Colors.blue),
+                                                  onPressed: () {
+                                                    Navigator.of(context).push(
+                                                      MaterialPageRoute(
+                                                        builder: (_) =>
+                                                            ExerciseHistoryScreen(
+                                                          exercise: item.exercise,
+                                                          playerId: widget.user.uid,
                                                         ),
                                                       ),
-                                                    ],
-                                                    if (item.exercise.description.isNotEmpty) ...[
-                                                      const SizedBox(height: 2),
-                                                      Text(
-                                                        item.exercise.description,
-                                                        style: const TextStyle(
-                                                            fontSize: 12, color: Colors.grey),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow.ellipsis,
-                                                      ),
-                                                    ],
-                                                  ],
-                                                ),
-                                                trailing: Row(
-                                                  mainAxisSize: MainAxisSize.min,
-                                                  children: [
-                                                    IconButton(
-                                                      icon: const Icon(
-                                                          Icons.show_chart,
-                                                          color: Colors.blue),
-                                                      tooltip: 'Historie anzeigen',
-                                                      onPressed: () {
-                                                        Navigator.of(context).push(
-                                                          MaterialPageRoute(
-                                                            builder: (_) =>
-                                                                ExerciseHistoryScreen(
-                                                              exercise: item.exercise,
-                                                              playerId: widget.user.uid,
-                                                            ),
-                                                          ),
-                                                        );
-                                                      },
-                                                    ),
-                                                    ElevatedButton.icon(
-                                                      icon: const Icon(Icons.edit, size: 14),
-                                                      label: const Text('Korrigieren'),
-                                                      style: ElevatedButton.styleFrom(
-                                                        backgroundColor: Colors.orange,
-                                                        foregroundColor: Colors.white,
-                                                      ),
-                                                      onPressed: () =>
-                                                          _showEnterOrEditResultDialog(
-                                                        item.exercise,
-                                                        existingResult: item.result,
-                                                      ),
-                                                    ),
-                                                  ],
+                                                    );
+                                                  },
                                                 ),
                                               ),
                                             );
@@ -768,7 +624,6 @@ class _DashboardExerciseItem {
   final DateTime scheduledDate;
   final ExerciseResult? result;
   final bool isOverdue;
-  final String targetInfo;
 
   _DashboardExerciseItem({
     required this.exercise,
@@ -776,6 +631,5 @@ class _DashboardExerciseItem {
     required this.scheduledDate,
     this.result,
     required this.isOverdue,
-    this.targetInfo = '',
   });
 }
