@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
+import '../services/theme_service.dart';
 import '../widgets/user_avatar_widget.dart';
 import '../main.dart'; // Import für themeModeNotifier
 
@@ -219,42 +220,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   /// Erstellt den Kachel-Eintrag für die ThemeMode-Auswahl
-  Widget _buildThemeDropdownTile(ThemeMode currentMode) {
-    return ListTile(
-      leading: Icon(
-        currentMode == ThemeMode.dark
-            ? Icons.dark_mode
-            : (currentMode == ThemeMode.light
-                ? Icons.light_mode
-                : Icons.settings_brightness),
-        color: Colors.deepOrange,
-      ),
-      title: const Text('Design-Modus'),
-      trailing: DropdownButton<ThemeMode>(
-        value: currentMode,
-        underline: const SizedBox(),
-        onChanged: (newMode) {
-          if (newMode != null) {
-            themeModeNotifier.value = newMode;
-          }
-        },
-        items: const [
-          DropdownMenuItem(
-            value: ThemeMode.system,
-            child: Text('System-Standard'),
-          ),
-          DropdownMenuItem(
-            value: ThemeMode.light,
-            child: Text('Helles Design'),
-          ),
-          DropdownMenuItem(
-            value: ThemeMode.dark,
-            child: Text('Dunkles Design (Darkmode)'),
-          ),
-        ],
-      ),
-    );
-  }
+ Widget _buildThemeDropdownTile(ThemeMode currentMode) {
+  final ThemeService themeService = ThemeService();
+
+  return ListTile(
+    leading: Icon(
+      currentMode == ThemeMode.dark
+          ? Icons.dark_mode
+          : (currentMode == ThemeMode.light
+              ? Icons.light_mode
+              : Icons.settings_brightness),
+      color: Colors.deepOrange,
+    ),
+    title: const Text('Design-Modus'),
+    trailing: DropdownButton<ThemeMode>(
+      value: currentMode,
+      underline: const SizedBox(),
+      onChanged: (newMode) async {
+        if (newMode != null) {
+          // 1. Live im UI umschalten
+          themeModeNotifier.value = newMode;
+          // 2. Lokal auf dem Gerät dauerhaft speichern
+          await themeService.saveThemeMode(newMode);
+        }
+      },
+      items: const [
+        DropdownMenuItem(
+          value: ThemeMode.system,
+          child: Text('System-Standard'),
+        ),
+        DropdownMenuItem(
+          value: ThemeMode.light,
+          child: Text('Helles Design'),
+        ),
+        DropdownMenuItem(
+          value: ThemeMode.dark,
+          child: Text('Dunkles Design (Darkmode)'),
+        ),
+      ],
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
