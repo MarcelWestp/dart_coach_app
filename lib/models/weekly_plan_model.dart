@@ -6,11 +6,13 @@ class ScheduledExercise {
   final String exerciseId;
   final TargetType targetType;
   final String targetValue; // z. B. "15 Min" oder "5 Serien"
+  final String? note;
 
   ScheduledExercise({
     required this.exerciseId,
     this.targetType = TargetType.none,
     this.targetValue = '',
+    this.note,
   });
 
   Map<String, dynamic> toMap() {
@@ -18,6 +20,7 @@ class ScheduledExercise {
       'exerciseId': exerciseId,
       'targetType': targetType.name,
       'targetValue': targetValue,
+      'note': note,
     };
   }
 
@@ -29,6 +32,7 @@ class ScheduledExercise {
         orElse: () => TargetType.none,
       ),
       targetValue: map['targetValue'] ?? '',
+      note: map['note'],
     );
   }
 }

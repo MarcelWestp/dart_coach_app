@@ -1,17 +1,26 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Modell für ein absolviertes Trainingsergebnis
+/// Datenmodell für das erzielte Ergebnis einer Übung
 class ExerciseResult {
   final String id;
   final String playerId;
   final String exerciseId;
   final DateTime timestamp;
+  final int? score;
+  final int? hits;
+  final int? attempts;
+  final int? timeInSeconds;
+
+  // Zuordnung zum Wochenplan
+  final String? dayOfWeek; // z. B. "Montag"
+  final int? weekNumber;  // z. B. 32
+  final int? year;        // z. B. 2026
   
-  // Verschiedene Auswertungswerte (je nach MetricType)
-  final int? score;           // Z.B. Punkte bei MetricType.score
-  final int? hits;            // Z.B. Treffer bei MetricType.hitsAndAttempts
-  final int? attempts;        // Z.B. Versuche bei MetricType.hitsAndAttempts
-  final int? timeInSeconds;   // Z.B. Benötigte Zeit bei MetricType.timeInSeconds
+  // NEU: Welcher Durchlauf war dies? (z. B. 1, 2, 3)
+  final int? roundIndex;
+
+  // Notiz vom Spieler zur Übung
+  final String? playerNote;
 
   ExerciseResult({
     required this.id,
@@ -22,6 +31,11 @@ class ExerciseResult {
     this.hits,
     this.attempts,
     this.timeInSeconds,
+    this.dayOfWeek,
+    this.weekNumber,
+    this.year,
+    this.roundIndex,
+    this.playerNote,
   });
 
   Map<String, dynamic> toMap() {
@@ -33,6 +47,11 @@ class ExerciseResult {
       'hits': hits,
       'attempts': attempts,
       'timeInSeconds': timeInSeconds,
+      'dayOfWeek': dayOfWeek,
+      'weekNumber': weekNumber,
+      'year': year,
+      'roundIndex': roundIndex,
+      'playerNote': playerNote,
     };
   }
 
@@ -41,11 +60,16 @@ class ExerciseResult {
       id: docId,
       playerId: map['playerId'] ?? '',
       exerciseId: map['exerciseId'] ?? '',
-      timestamp: (map['timestamp'] as Timestamp).toDate(),
+      timestamp: (map['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
       score: map['score'],
       hits: map['hits'],
       attempts: map['attempts'],
       timeInSeconds: map['timeInSeconds'],
+      dayOfWeek: map['dayOfWeek'],
+      weekNumber: map['weekNumber'],
+      year: map['year'],
+      roundIndex: map['roundIndex'],
+      playerNote: map['playerNote'],
     );
   }
 }

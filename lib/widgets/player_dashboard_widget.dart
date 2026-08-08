@@ -40,7 +40,7 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
     'Donnerstag',
     'Freitag',
     'Samstag',
-    'Sonntag'
+    'Sonntag',
   ];
 
   @override
@@ -51,7 +51,11 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
   }
 
   void _updateWeekAndYear() {
-    int w = ((_selectedDate.difference(DateTime(_selectedDate.year, 1, 1)).inDays + 1) / 7).ceil();
+    int w =
+        ((_selectedDate.difference(DateTime(_selectedDate.year, 1, 1)).inDays +
+                    1) /
+                7)
+            .ceil();
     _currentWeekNumber = w > 52 ? 52 : (w == 0 ? 1 : w);
     _currentYear = _selectedDate.year;
   }
@@ -64,25 +68,81 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
   }
 
   DateTime _getDateForDayIndex(int dayIndex) {
-    DateTime monday = _selectedDate.subtract(Duration(days: _selectedDate.weekday - 1));
-    return DateTime(monday.year, monday.month, monday.day).add(Duration(days: dayIndex));
+    DateTime monday = _selectedDate.subtract(
+      Duration(days: _selectedDate.weekday - 1),
+    );
+    return DateTime(
+      monday.year,
+      monday.month,
+      monday.day,
+    ).add(Duration(days: dayIndex));
   }
 
-  void _showEnterOrEditResultDialog(Exercise exercise, {ExerciseResult? existingResult}) {
-    final bool isEditing = existingResult != null;
+  /// Liest die Anzahl der Durchläufe aus dem Vorgabe-Text aus (z. B. "3 Serien" -> 3)
+  int _parseRepsCount(TargetType targetType, String targetValue) {
+    if (targetType != TargetType.reps || targetValue.trim().isEmpty) {
+      return 1; // Standardmäßig 1 Durchlauf
+    }
+    // Extrahiert die erste Zahl aus dem Text
+    final RegExp regExp = RegExp(r'\d+');
+    final match = regExp.firstMatch(targetValue);
+    if (match != null) {
+      return int.tryParse(match.group(0)!) ?? 1;
+    }
+    return 1;
+  }
 
-    final scoreController = TextEditingController(
-      text: existingResult?.score?.toString() ?? '',
+  /// Dialog zum Eintragen von Ergebnissen für einen oder mehrere Durchläufe.
+  /// NEU: Zeigt Trainer-Hinweise an und bietet ein Bemerkungsfeld für den Spieler.
+  void _showEnterOrEditResultDialog(
+    Exercise exercise, {
+    required String dayName,
+    TargetType targetType = TargetType.none,
+    String targetValue = '',
+    String? trainerNote,
+    List<ExerciseResult>? existingResults,
+  }) {
+    // Bestimmen, wie viele Durchläufe eingetragen werden sollen
+    final int repsCount = _parseRepsCount(targetType, targetValue);
+
+    // Controller für Spieler-Bemerkung
+    final playerNoteController = TextEditingController(
+      text: existingResults?.firstOrNull?.playerNote ?? '',
     );
-    final hitsController = TextEditingController(
-      text: existingResult?.hits?.toString() ?? '',
-    );
-    final attemptsController = TextEditingController(
-      text: existingResult?.attempts?.toString() ?? '',
-    );
-    final timeController = TextEditingController(
-      text: existingResult?.timeInSeconds?.toString() ?? '',
-    );
+
+    // Für jeden Durchlauf eigene Controller vorbereiten
+    final List<TextEditingController> scoreControllers = [];
+    final List<TextEditingController> hitsControllers = [];
+    final List<TextEditingController> attemptsControllers = [];
+    final List<TextEditingController> timeControllers = [];
+
+    for (int i = 0; i < repsCount; i++) {
+      // Falls bereits ein Ergebnis für diesen Durchlauf existiert, Werte vorbefüllen
+      final existing = existingResults?.firstWhere(
+        (r) => r.roundIndex == (i + 1),
+        orElse: () => existingResults != null && existingResults.length > i
+            ? existingResults[i]
+            : ExerciseResult(
+                id: '',
+                playerId: '',
+                exerciseId: '',
+                timestamp: DateTime.now(),
+              ),
+      );
+
+      scoreControllers.add(
+        TextEditingController(text: existing?.score?.toString() ?? ''),
+      );
+      hitsControllers.add(
+        TextEditingController(text: existing?.hits?.toString() ?? ''),
+      );
+      attemptsControllers.add(
+        TextEditingController(text: existing?.attempts?.toString() ?? ''),
+      );
+      timeControllers.add(
+        TextEditingController(text: existing?.timeInSeconds?.toString() ?? ''),
+      );
+    }
 
     showDialog(
       context: context,
@@ -93,86 +153,187 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                isEditing ? 'Ergebnis korrigieren' : 'Ergebnis eintragen',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                repsCount > 1
+                    ? 'Ergebnisse eintragen ($repsCount Durchläufe)'
+                    : 'Ergebnis eintragen',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
-                exercise.title,
-                style: TextStyle(fontSize: 15, color: Colors.deepOrange.shade700, fontWeight: FontWeight.w600),
+                '${exercise.title} ($dayName)',
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.deepOrange.shade700,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (exercise.description.isNotEmpty) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(10.0),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.shade300),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // TRAINER-HINWEIS ANZEIGEN (falls vorhanden)
+                  if (trainerNote != null && trainerNote.isNotEmpty) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10.0),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.amber.shade400),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.sports_rounded,
+                            size: 18,
+                            color: Colors.amber.shade900,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Trainer-Hinweis:',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.amber.shade900,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  trainerNote,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.amber.shade900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Anleitung / Beschreibung:',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          exercise.description,
-                          style: const TextStyle(fontSize: 13, color: Colors.black87),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
+                    const SizedBox(height: 12),
+                  ],
 
-                if (exercise.metricType == MetricType.score)
-                  TextField(
-                    controller: scoreController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Erzielte Punkte / Score',
-                      border: OutlineInputBorder(),
+                  if (exercise.description.isNotEmpty) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10.0),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Text(
+                        exercise.description,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.black87,
+                        ),
+                      ),
                     ),
-                  ),
-                if (exercise.metricType == MetricType.hitsAndAttempts) ...[
+                    const SizedBox(height: 16),
+                  ],
+
+                  // SCHLEIFE FÜR JEDEN DURCHLAUF
+                  for (int i = 0; i < repsCount; i++) ...[
+                    if (repsCount > 1) ...[
+                      Text(
+                        'Durchlauf ${i + 1} von $repsCount:',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.deepOrange,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                    ],
+
+                    if (exercise.metricType == MetricType.score)
+                      TextField(
+                        controller: scoreControllers[i],
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: repsCount > 1
+                              ? 'Score Durchlauf ${i + 1}'
+                              : 'Erzielte Punkte / Score',
+                          border: const OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                      ),
+
+                    if (exercise.metricType == MetricType.hitsAndAttempts) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: hitsControllers[i],
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Treffer',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: attemptsControllers[i],
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Versuche',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+
+                    if (exercise.metricType == MetricType.timeInSeconds)
+                      TextField(
+                        controller: timeControllers[i],
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: repsCount > 1
+                              ? 'Zeit in Sek. (Durchlauf ${i + 1})'
+                              : 'Zeit in Sekunden',
+                          border: const OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                      ),
+
+                    const SizedBox(height: 16),
+                  ],
+
+                  // NEU: EINGABEFELD FÜR SPIELER-BEMERKUNG
+                  const Divider(),
+                  const SizedBox(height: 8),
                   TextField(
-                    controller: hitsController,
-                    keyboardType: TextInputType.number,
+                    controller: playerNoteController,
+                    maxLines: 2,
                     decoration: const InputDecoration(
-                      labelText: 'Anzahl Treffer',
+                      labelText: 'Eigene Bemerkung / Feedback (optional)',
+                      hintText: 'z. B. Gutes Gefühl, Darts lagen eng zusammen...',
                       border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: attemptsController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Anzahl Versuche',
-                      border: OutlineInputBorder(),
+                      isDense: true,
                     ),
                   ),
                 ],
-                if (exercise.metricType == MetricType.timeInSeconds)
-                  TextField(
-                    controller: timeController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Zeit in Sekunden',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-              ],
+              ),
             ),
           ),
           actions: [
@@ -182,21 +343,41 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
             ),
             ElevatedButton(
               onPressed: () async {
-                final newResult = ExerciseResult(
-                  id: isEditing ? existingResult.id : '',
-                  playerId: widget.user.uid,
-                  exerciseId: exercise.id,
-                  timestamp: isEditing ? existingResult.timestamp : DateTime.now(),
-                  score: int.tryParse(scoreController.text.trim()),
-                  hits: int.tryParse(hitsController.text.trim()),
-                  attempts: int.tryParse(attemptsController.text.trim()),
-                  timeInSeconds: int.tryParse(timeController.text.trim()),
-                );
+                final String? noteText = playerNoteController.text.trim().isNotEmpty
+                    ? playerNoteController.text.trim()
+                    : null;
 
-                if (isEditing) {
-                  await _resultService.updateResult(newResult);
-                } else {
-                  await _resultService.saveResult(newResult);
+                // SPEICHERN JEDES DURCHLAUFS ALS EIGENES ERGEBNIS
+                for (int i = 0; i < repsCount; i++) {
+                  final scoreVal = int.tryParse(
+                    scoreControllers[i].text.trim(),
+                  );
+                  final hitsVal = int.tryParse(hitsControllers[i].text.trim());
+                  final attemptsVal = int.tryParse(
+                    attemptsControllers[i].text.trim(),
+                  );
+                  final timeVal = int.tryParse(timeControllers[i].text.trim());
+
+                  // Nur speichern, wenn mindestens ein Wert eingegeben wurde
+                  if (scoreVal != null || hitsVal != null || timeVal != null) {
+                    final newResult = ExerciseResult(
+                      id: '',
+                      playerId: widget.user.uid,
+                      exerciseId: exercise.id,
+                      timestamp: DateTime.now(),
+                      score: scoreVal,
+                      hits: hitsVal,
+                      attempts: attemptsVal,
+                      timeInSeconds: timeVal,
+                      dayOfWeek: dayName,
+                      weekNumber: _currentWeekNumber,
+                      year: _currentYear,
+                      roundIndex: repsCount > 1 ? (i + 1) : null, // 1, 2, 3...
+                      playerNote: noteText, // NEU: Spieler-Bemerkung mitspeichern
+                    );
+
+                    await _resultService.saveResult(newResult);
+                  }
                 }
 
                 if (mounted) {
@@ -204,9 +385,9 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        isEditing
-                            ? 'Ergebnis erfolgreich korrigiert!'
-                            : 'Ergebnis gespeichert!',
+                        repsCount > 1
+                            ? '$repsCount Durchläufe für $dayName gespeichert!'
+                            : 'Ergebnis für $dayName gespeichert!',
                       ),
                       backgroundColor: Colors.green,
                     ),
@@ -214,10 +395,10 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: isEditing ? Colors.orange : Colors.green,
+                backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
               ),
-              child: Text(isEditing ? 'Aktualisieren' : 'Speichern'),
+              child: const Text('Speichern'),
             ),
           ],
         );
@@ -251,11 +432,14 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                         Text(
                           'Willkommen, ${widget.user.name}!',
                           style: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          widget.user.club != null && widget.user.club!.isNotEmpty
+                          widget.user.club != null &&
+                                  widget.user.club!.isNotEmpty
                               ? '${widget.user.club} ${widget.user.team != null ? "(${widget.user.team})" : ""}'
                               : 'Spieler Dashboard',
                           style: const TextStyle(color: Colors.grey),
@@ -264,7 +448,11 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.bar_chart, color: Colors.deepOrange, size: 28),
+                    icon: const Icon(
+                      Icons.bar_chart,
+                      color: Colors.deepOrange,
+                      size: 28,
+                    ),
                     tooltip: 'Meine Statistiken',
                     onPressed: () {
                       Navigator.of(context).push(
@@ -382,7 +570,9 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                             Text(
                               'Enthaltene Übungen: ${currentWeekTest.exerciseIds.length}',
                               style: const TextStyle(
-                                  fontWeight: FontWeight.w600, color: Colors.black87),
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
                             ),
                             const SizedBox(height: 12),
                             ElevatedButton.icon(
@@ -457,11 +647,14 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
 
                           final daySchedule = plan.days.firstWhere(
                             (d) => d.dayOfWeek == dayName,
-                            orElse: () =>
-                                DailySchedule(dayOfWeek: dayName, scheduledExercises: []),
+                            orElse: () => DailySchedule(
+                              dayOfWeek: dayName,
+                              scheduledExercises: [],
+                            ),
                           );
 
-                          for (var scheduledEx in daySchedule.scheduledExercises) {
+                          for (var scheduledEx
+                              in daySchedule.scheduledExercises) {
                             final exercise = exercises.firstWhere(
                               (e) => e.id == scheduledEx.exerciseId,
                               orElse: () => Exercise(
@@ -475,17 +668,24 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                             String targetInfo = '';
                             if (scheduledEx.targetType == TargetType.duration &&
                                 scheduledEx.targetValue.isNotEmpty) {
-                              targetInfo = '⏱️ Vorgabe: ${scheduledEx.targetValue}';
-                            } else if (scheduledEx.targetType == TargetType.reps &&
+                              targetInfo =
+                                  '⏱️ Vorgabe: ${scheduledEx.targetValue}';
+                            } else if (scheduledEx.targetType ==
+                                    TargetType.reps &&
                                 scheduledEx.targetValue.isNotEmpty) {
-                              targetInfo = '🔁 Vorgabe: ${scheduledEx.targetValue}';
+                              targetInfo =
+                                  '🔁 Vorgabe: ${scheduledEx.targetValue}';
                             }
 
-                            final existingResult = allResults
-                                .where((r) => r.exerciseId == scheduledEx.exerciseId)
-                                .firstOrNull;
+                            final existingResult = allResults.where((r) {
+                              return r.exerciseId == scheduledEx.exerciseId &&
+                                  r.dayOfWeek == dayName &&
+                                  r.weekNumber == _currentWeekNumber &&
+                                  r.year == _currentYear;
+                            }).firstOrNull;
 
-                            final isOverdue = existingResult == null &&
+                            final isOverdue =
+                                existingResult == null &&
                                 dayDate.isBefore(todayMidnight);
 
                             final item = _DashboardExerciseItem(
@@ -495,6 +695,9 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                               result: existingResult,
                               isOverdue: isOverdue,
                               targetInfo: targetInfo,
+                              targetType: scheduledEx.targetType,
+                              targetValue: scheduledEx.targetValue,
+                              trainerNote: scheduledEx.note, // NEU: Trainer-Hinweis auslesen
                             );
 
                             if (existingResult != null) {
@@ -536,7 +739,9 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                                       ? const Center(
                                           child: Text(
                                             'Keine offenen Tages-Übungen in dieser Woche! 🎉',
-                                            style: TextStyle(color: Colors.grey),
+                                            style: TextStyle(
+                                              color: Colors.grey,
+                                            ),
                                           ),
                                         )
                                       : ListView.builder(
@@ -545,10 +750,13 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                                             final item = openItems[index];
 
                                             return Card(
-                                              margin: const EdgeInsets.symmetric(
-                                                  vertical: 6),
+                                              margin:
+                                                  const EdgeInsets.symmetric(
+                                                vertical: 6,
+                                              ),
                                               color: item.isOverdue
-                                                  ? Colors.red.shade900.withOpacity(0.15)
+                                                  ? Colors.red.shade900
+                                                      .withOpacity(0.15)
                                                   : null,
                                               shape: RoundedRectangleBorder(
                                                 side: BorderSide(
@@ -562,12 +770,14 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                                               ),
                                               child: ListTile(
                                                 leading: CircleAvatar(
-                                                  backgroundColor: item.isOverdue
-                                                      ? Colors.red
-                                                      : Colors.deepOrange,
+                                                  backgroundColor:
+                                                      item.isOverdue
+                                                          ? Colors.red
+                                                          : Colors.deepOrange,
                                                   child: Icon(
                                                     item.isOverdue
-                                                        ? Icons.warning_amber_rounded
+                                                        ? Icons
+                                                            .warning_amber_rounded
                                                         : Icons.schedule,
                                                     color: Colors.white,
                                                   ),
@@ -575,10 +785,12 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                                                 title: Text(
                                                   item.exercise.title,
                                                   style: const TextStyle(
-                                                      fontWeight: FontWeight.bold),
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
                                                 ),
                                                 subtitle: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
                                                   children: [
                                                     Text(
                                                       '${item.dayName} (${item.scheduledDate.day}.${item.scheduledDate.month}.)' +
@@ -588,30 +800,78 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                                                       style: TextStyle(
                                                         color: item.isOverdue
                                                             ? Colors.red
-                                                            : Colors.grey.shade700,
-                                                        fontWeight: item.isOverdue
-                                                            ? FontWeight.bold
-                                                            : FontWeight.normal,
+                                                            : Colors
+                                                                .grey
+                                                                .shade700,
+                                                        fontWeight:
+                                                            item.isOverdue
+                                                                ? FontWeight.bold
+                                                                : FontWeight.normal,
                                                       ),
                                                     ),
-                                                    if (item.targetInfo.isNotEmpty) ...[
+                                                    if (item
+                                                        .targetInfo
+                                                        .isNotEmpty) ...[
                                                       const SizedBox(height: 2),
                                                       Text(
                                                         item.targetInfo,
                                                         style: const TextStyle(
-                                                          fontWeight: FontWeight.bold,
-                                                          color: Colors.deepOrange,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          color:
+                                                              Colors.deepOrange,
                                                         ),
                                                       ),
                                                     ],
-                                                    if (item.exercise.description.isNotEmpty) ...[
+                                                    // NEU: TRAINER-HINWEIS KARTEN-ANZEIGE
+                                                    if (item.trainerNote != null &&
+                                                        item.trainerNote!
+                                                            .isNotEmpty) ...[
+                                                      const SizedBox(height: 2),
+                                                      Row(
+                                                        children: [
+                                                          const Icon(
+                                                            Icons.sports_rounded,
+                                                            size: 13,
+                                                            color: Colors.amber,
+                                                          ),
+                                                          const SizedBox(width: 4),
+                                                          Expanded(
+                                                            child: Text(
+                                                              'Trainer: "${item.trainerNote}"',
+                                                              style: TextStyle(
+                                                                fontSize: 12,
+                                                                fontStyle:
+                                                                    FontStyle.italic,
+                                                                color: Colors
+                                                                    .amber.shade900,
+                                                                fontWeight:
+                                                                    FontWeight.w600,
+                                                              ),
+                                                              maxLines: 1,
+                                                              overflow: TextOverflow
+                                                                  .ellipsis,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                    if (item
+                                                        .exercise
+                                                        .description
+                                                        .isNotEmpty) ...[
                                                       const SizedBox(height: 2),
                                                       Text(
-                                                        item.exercise.description,
+                                                        item
+                                                            .exercise
+                                                            .description,
                                                         style: const TextStyle(
-                                                            fontSize: 12, color: Colors.grey),
+                                                          fontSize: 12,
+                                                          color: Colors.grey,
+                                                        ),
                                                         maxLines: 2,
-                                                        overflow: TextOverflow.ellipsis,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
                                                       ),
                                                     ],
                                                   ],
@@ -619,14 +879,28 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                                                 trailing: ElevatedButton(
                                                   onPressed: () =>
                                                       _showEnterOrEditResultDialog(
-                                                          item.exercise),
-                                                  style: ElevatedButton.styleFrom(
-                                                    backgroundColor: item.isOverdue
-                                                        ? Colors.red
-                                                        : Colors.green,
-                                                    foregroundColor: Colors.white,
+                                                    item.exercise,
+                                                    dayName: item.dayName,
+                                                    targetType: item.targetType,
+                                                    targetValue: item.targetValue,
+                                                    trainerNote: item.trainerNote, // NEU!
+                                                    existingResults:
+                                                        item.result != null
+                                                            ? [item.result!]
+                                                            : null,
                                                   ),
-                                                  child: const Text('Eintragen'),
+                                                  style:
+                                                      ElevatedButton.styleFrom(
+                                                    backgroundColor:
+                                                        item.isOverdue
+                                                            ? Colors.red
+                                                            : Colors.green,
+                                                    foregroundColor:
+                                                        Colors.white,
+                                                  ),
+                                                  child: const Text(
+                                                    'Eintragen',
+                                                  ),
                                                 ),
                                               ),
                                             );
@@ -638,7 +912,9 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                                       ? const Center(
                                           child: Text(
                                             'Noch keine Übungen in dieser Woche absolviert.',
-                                            style: TextStyle(color: Colors.grey),
+                                            style: TextStyle(
+                                              color: Colors.grey,
+                                            ),
                                           ),
                                         )
                                       : ListView.builder(
@@ -652,11 +928,15 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                                                   MetricType.score) {
                                                 resultVal =
                                                     '${item.result!.score} Punkte';
-                                              } else if (item.exercise.metricType ==
+                                              } else if (item
+                                                      .exercise
+                                                      .metricType ==
                                                   MetricType.hitsAndAttempts) {
                                                 resultVal =
                                                     '${item.result!.hits}/${item.result!.attempts} Treffer';
-                                              } else if (item.exercise.metricType ==
+                                              } else if (item
+                                                      .exercise
+                                                      .metricType ==
                                                   MetricType.timeInSeconds) {
                                                 resultVal =
                                                     '${item.result!.timeInSeconds} Sek.';
@@ -664,78 +944,159 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                                             }
 
                                             return Card(
-                                              margin: const EdgeInsets.symmetric(
-                                                  vertical: 6),
+                                              margin:
+                                                  const EdgeInsets.symmetric(
+                                                vertical: 6,
+                                              ),
                                               child: ListTile(
                                                 leading: const CircleAvatar(
                                                   backgroundColor: Colors.green,
-                                                  child: Icon(Icons.check,
-                                                      color: Colors.white),
+                                                  child: Icon(
+                                                    Icons.check,
+                                                    color: Colors.white,
+                                                  ),
                                                 ),
-                                                title: Text(item.exercise.title),
+                                                title: Text(
+                                                  item.exercise.title,
+                                                ),
                                                 subtitle: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
                                                   children: [
                                                     Text(
                                                       'Gespielt am ${item.dayName} • Ergebnis: $resultVal',
                                                       style: const TextStyle(
-                                                          color: Colors.green,
-                                                          fontWeight:
-                                                              FontWeight.bold),
+                                                        color: Colors.green,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
                                                     ),
-                                                    if (item.targetInfo.isNotEmpty) ...[
+                                                    if (item
+                                                        .targetInfo
+                                                        .isNotEmpty) ...[
                                                       const SizedBox(height: 2),
                                                       Text(
                                                         item.targetInfo,
                                                         style: const TextStyle(
-                                                          fontWeight: FontWeight.bold,
-                                                          color: Colors.deepOrange,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          color:
+                                                              Colors.deepOrange,
                                                         ),
                                                       ),
                                                     ],
-                                                    if (item.exercise.description.isNotEmpty) ...[
+                                                    // NEU: TRAINER-HINWEIS KARTEN-ANZEIGE
+                                                    if (item.trainerNote != null &&
+                                                        item.trainerNote!
+                                                            .isNotEmpty) ...[
+                                                      const SizedBox(height: 2),
+                                                      Row(
+                                                        children: [
+                                                          const Icon(
+                                                            Icons.sports_rounded,
+                                                            size: 13,
+                                                            color: Colors.amber,
+                                                          ),
+                                                          const SizedBox(width: 4),
+                                                          Expanded(
+                                                            child: Text(
+                                                              'Trainer: "${item.trainerNote}"',
+                                                              style: TextStyle(
+                                                                fontSize: 12,
+                                                                fontStyle:
+                                                                    FontStyle.italic,
+                                                                color: Colors
+                                                                    .amber.shade900,
+                                                                fontWeight:
+                                                                    FontWeight.w600,
+                                                              ),
+                                                              maxLines: 1,
+                                                              overflow: TextOverflow
+                                                                  .ellipsis,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                    if (item
+                                                        .exercise
+                                                        .description
+                                                        .isNotEmpty) ...[
                                                       const SizedBox(height: 2),
                                                       Text(
-                                                        item.exercise.description,
+                                                        item
+                                                            .exercise
+                                                            .description,
                                                         style: const TextStyle(
-                                                            fontSize: 12, color: Colors.grey),
+                                                          fontSize: 12,
+                                                          color: Colors.grey,
+                                                        ),
                                                         maxLines: 1,
-                                                        overflow: TextOverflow.ellipsis,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
                                                       ),
                                                     ],
                                                   ],
                                                 ),
                                                 trailing: Row(
-                                                  mainAxisSize: MainAxisSize.min,
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
                                                   children: [
                                                     IconButton(
                                                       icon: const Icon(
-                                                          Icons.show_chart,
-                                                          color: Colors.blue),
-                                                      tooltip: 'Historie anzeigen',
+                                                        Icons.show_chart,
+                                                        color: Colors.blue,
+                                                      ),
+                                                      tooltip:
+                                                          'Historie anzeigen',
                                                       onPressed: () {
-                                                        Navigator.of(context).push(
+                                                        Navigator.of(
+                                                          context,
+                                                        ).push(
                                                           MaterialPageRoute(
                                                             builder: (_) =>
                                                                 ExerciseHistoryScreen(
-                                                              exercise: item.exercise,
-                                                              playerId: widget.user.uid,
+                                                              exercise: item
+                                                                  .exercise,
+                                                              playerId:
+                                                                  widget
+                                                                      .user
+                                                                      .uid,
                                                             ),
                                                           ),
                                                         );
                                                       },
                                                     ),
                                                     ElevatedButton.icon(
-                                                      icon: const Icon(Icons.edit, size: 14),
-                                                      label: const Text('Korrigieren'),
-                                                      style: ElevatedButton.styleFrom(
-                                                        backgroundColor: Colors.orange,
-                                                        foregroundColor: Colors.white,
+                                                      icon: const Icon(
+                                                        Icons.edit,
+                                                        size: 14,
+                                                      ),
+                                                      label: const Text(
+                                                        'Korrigieren',
+                                                      ),
+                                                      style:
+                                                          ElevatedButton.styleFrom(
+                                                        backgroundColor:
+                                                            Colors.orange,
+                                                        foregroundColor:
+                                                            Colors.white,
                                                       ),
                                                       onPressed: () =>
                                                           _showEnterOrEditResultDialog(
                                                         item.exercise,
-                                                        existingResult: item.result,
+                                                        dayName:
+                                                            item.dayName,
+                                                        targetType: item
+                                                            .targetType,
+                                                        targetValue: item
+                                                            .targetValue,
+                                                        trainerNote: item.trainerNote, // NEU!
+                                                        existingResults:
+                                                            item.result !=
+                                                                    null
+                                                                ? [item.result!]
+                                                                : null,
                                                       ),
                                                     ),
                                                   ],
@@ -762,6 +1123,7 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
   }
 }
 
+/// Hilfsklasse zur Bündelung aller Informationen eines Dashboard-Eintrags
 class _DashboardExerciseItem {
   final Exercise exercise;
   final String dayName;
@@ -770,6 +1132,13 @@ class _DashboardExerciseItem {
   final bool isOverdue;
   final String targetInfo;
 
+  // Vorgabe-Typ und -Wert für Durchläufe/Dauer
+  final TargetType targetType;
+  final String targetValue;
+
+  // NEU: Notiz des Trainers für diese Übung
+  final String? trainerNote;
+
   _DashboardExerciseItem({
     required this.exercise,
     required this.dayName,
@@ -777,5 +1146,8 @@ class _DashboardExerciseItem {
     this.result,
     required this.isOverdue,
     this.targetInfo = '',
+    this.targetType = TargetType.none,
+    this.targetValue = '',
+    this.trainerNote,
   });
 }

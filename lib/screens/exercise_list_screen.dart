@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import '../models/exercise_model.dart';
+import '../models/weekly_plan_model.dart'; // Für TargetType
 import '../models/tag_model.dart';
 import '../services/exercise_service.dart';
 import '../services/tag_service.dart';
 import 'tag_management_screen.dart';
 
-/// Verwaltung der Übungen inklusive Tag-Zuweisung.
-/// Fügt sich ohne doppelten Header nahtlos in den TrainerMainScreen ein.
+/// Verwaltung der Übungen inklusive Standard-Dauer/Durchläufen & Tag-Zuweisung.
 class ExerciseListScreen extends StatefulWidget {
   const ExerciseListScreen({super.key});
 
@@ -22,7 +22,10 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
   void _showExerciseDialog({Exercise? exercise}) {
     final titleController = TextEditingController(text: exercise?.title ?? '');
     final descController = TextEditingController(text: exercise?.description ?? '');
+    final targetValueController = TextEditingController(text: exercise?.defaultTargetValue ?? '');
+
     MetricType selectedMetric = exercise?.metricType ?? MetricType.score;
+    TargetType selectedTargetType = exercise?.defaultTargetType ?? TargetType.none;
     List<String> selectedTagIds = List.from(exercise?.tagIds ?? []);
 
     final isEditing = exercise != null;
@@ -56,6 +59,8 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
+
+                    // ERFASSUNGSTYP
                     DropdownButtonFormField<MetricType>(
                       value: selectedMetric,
                       decoration: const InputDecoration(
@@ -81,10 +86,65 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
+
+                    // OPTIONALE VORGABE (DAUER ODER DURCHLÄUFE)
+                    const Text(
+                      'Standard-Vorgabe (Optional):',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<TargetType>(
+                            value: selectedTargetType,
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              border: OutlineInputBorder(),
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: TargetType.none,
+                                child: Text('Keine Vorgabe'),
+                              ),
+                              DropdownMenuItem(
+                                value: TargetType.duration,
+                                child: Text('⏱️ Dauer'),
+                              ),
+                              DropdownMenuItem(
+                                value: TargetType.reps,
+                                child: Text('🔁 Durchläufe'),
+                              ),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) {
+                                setDialogState(() => selectedTargetType = val);
+                              }
+                            },
+                          ),
+                        ),
+                        if (selectedTargetType != TargetType.none) ...[
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: targetValueController,
+                              decoration: InputDecoration(
+                                hintText: selectedTargetType == TargetType.duration
+                                    ? 'z. B. 15 Min'
+                                    : 'z. B. 10 Serien',
+                                isDense: true,
+                                border: const OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // TAGS ZUWEISEN
                     const Text('Tags zuweisen:', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-
-                    // STREAM DER VERFÜGBAREN TAGS IM DIALOG
                     StreamBuilder<List<ExerciseTag>>(
                       stream: _tagService.getTags(),
                       builder: (context, snapshot) {
@@ -141,6 +201,8 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                       description: descController.text.trim(),
                       metricType: selectedMetric,
                       tagIds: selectedTagIds,
+                      defaultTargetType: selectedTargetType,
+                      defaultTargetValue: targetValueController.text.trim(),
                     );
 
                     if (isEditing) {
@@ -167,11 +229,9 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // KEIN Scaffold und KEINE innere AppBar mehr!
-    // Stattdessen eine saubere Column-Struktur unter der Haupt-AppBar.
     return Column(
       children: [
-        // AKTIONSLEISTE OBEN (Buttons für Tags verwalten & Neue Übung)
+        // AKTIONSLEISTE OBEN
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           color: Theme.of(context).cardColor,
@@ -240,21 +300,49 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                       final assignedTags =
                           tags.where((t) => ex.tagIds.contains(t.id)).toList();
 
+                      // Vorgabe-Text aufbereiten
+                      String targetInfo = '';
+                      if (ex.defaultTargetType == TargetType.duration &&
+                          ex.defaultTargetValue.isNotEmpty) {
+                        targetInfo = '⏱️ Standard: ${ex.defaultTargetValue}';
+                      } else if (ex.defaultTargetType == TargetType.reps &&
+                          ex.defaultTargetValue.isNotEmpty) {
+                        targetInfo = '🔁 Standard: ${ex.defaultTargetValue}';
+                      }
+
                       return Card(
                         elevation: 2,
                         margin: const EdgeInsets.symmetric(vertical: 6),
                         child: ListTile(
-                          title: Text(
-                            ex.title,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          title: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  ex.title,
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              if (targetInfo.isNotEmpty)
+                                Chip(
+                                  label: Text(
+                                    targetInfo,
+                                    style: const TextStyle(
+                                        fontSize: 11, color: Colors.deepOrange),
+                                  ),
+                                  backgroundColor: Colors.deepOrange.shade50,
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                ),
+                            ],
                           ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               if (ex.description.isNotEmpty) ...[
-                                Text(ex.description),
                                 const SizedBox(height: 4),
+                                Text(ex.description),
                               ],
+                              const SizedBox(height: 4),
                               if (assignedTags.isNotEmpty)
                                 Wrap(
                                   spacing: 4,
