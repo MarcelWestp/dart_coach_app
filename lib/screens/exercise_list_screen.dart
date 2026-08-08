@@ -5,7 +5,8 @@ import '../services/exercise_service.dart';
 import '../services/tag_service.dart';
 import 'tag_management_screen.dart';
 
-/// Verwaltung der Übungen inklusive Tag-Zuweisung und Button zur Tag-Verwaltung
+/// Verwaltung der Übungen inklusive Tag-Zuweisung.
+/// Fügt sich ohne doppelten Header nahtlos in den TrainerMainScreen ein.
 class ExerciseListScreen extends StatefulWidget {
   const ExerciseListScreen({super.key});
 
@@ -17,6 +18,7 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
   final ExerciseService _exerciseService = ExerciseService();
   final TagService _tagService = TagService();
 
+  /// Dialog zum Erstellen oder Bearbeiten einer Übung
   void _showExerciseDialog({Exercise? exercise}) {
     final titleController = TextEditingController(text: exercise?.title ?? '');
     final descController = TextEditingController(text: exercise?.description ?? '');
@@ -82,7 +84,7 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                     const Text('Tags zuweisen:', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
 
-                    // STREAM DER VERFÜGBAREN TAGS
+                    // STREAM DER VERFÜGBAREN TAGS IM DIALOG
                     StreamBuilder<List<ExerciseTag>>(
                       stream: _tagService.getTags(),
                       builder: (context, snapshot) {
@@ -165,102 +167,139 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Übungen verwalten'),
-        actions: [
-          // BUTTON ZUR TAG-VERWALTUNG
-          IconButton(
-            icon: const Icon(Icons.sell_outlined),
-            tooltip: 'Tags verwalten',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const TagManagementScreen()),
-              );
-            },
+    // KEIN Scaffold und KEINE innere AppBar mehr!
+    // Stattdessen eine saubere Column-Struktur unter der Haupt-AppBar.
+    return Column(
+      children: [
+        // AKTIONSLEISTE OBEN (Buttons für Tags verwalten & Neue Übung)
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          color: Theme.of(context).cardColor,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              OutlinedButton.icon(
+                icon: const Icon(Icons.sell_outlined, size: 18),
+                label: const Text('Tags verwalten'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.deepOrange,
+                  side: const BorderSide(color: Colors.deepOrange),
+                ),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const TagManagementScreen()),
+                  );
+                },
+              ),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Neue Übung'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepOrange,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => _showExerciseDialog(),
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Neue Übung anlegen',
-            onPressed: () => _showExerciseDialog(),
-          ),
-        ],
-      ),
-      body: StreamBuilder<List<ExerciseTag>>(
-        stream: _tagService.getTags(),
-        builder: (context, tagSnapshot) {
-          final tags = tagSnapshot.data ?? [];
+        ),
 
-          return StreamBuilder<List<Exercise>>(
-            stream: _exerciseService.getExercises(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
+        const Divider(height: 1),
 
-              final exercises = snapshot.data ?? [];
+        // LISTE DER ÜBUNGEN
+        Expanded(
+          child: StreamBuilder<List<ExerciseTag>>(
+            stream: _tagService.getTags(),
+            builder: (context, tagSnapshot) {
+              final tags = tagSnapshot.data ?? [];
 
-              if (exercises.isEmpty) {
-                return const Center(
-                  child: Text('Noch keine Übungen angelegt.'),
-                );
-              }
+              return StreamBuilder<List<Exercise>>(
+                stream: _exerciseService.getExercises(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-              return ListView.builder(
-                padding: const EdgeInsets.all(12),
-                itemCount: exercises.length,
-                itemBuilder: (context, index) {
-                  final ex = exercises[index];
-                  final assignedTags =
-                      tags.where((t) => ex.tagIds.contains(t.id)).toList();
+                  final exercises = snapshot.data ?? [];
 
-                  return Card(
-                    elevation: 2,
-                    margin: const EdgeInsets.symmetric(vertical: 6),
-                    child: ListTile(
-                      title: Text(ex.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(ex.description),
-                          const SizedBox(height: 4),
-                          if (assignedTags.isNotEmpty)
-                            Wrap(
-                              spacing: 4,
-                              children: assignedTags.map((t) {
-                                return Chip(
-                                  label: Text(t.name, style: const TextStyle(fontSize: 10, color: Colors.white)),
-                                  backgroundColor: t.color,
-                                  visualDensity: VisualDensity.compact,
-                                  padding: EdgeInsets.zero,
-                                );
-                              }).toList(),
-                            ),
-                        ],
+                  if (exercises.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'Noch keine Übungen angelegt.\nKlicke oben auf "Neue Übung", um zu starten.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey),
                       ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.blue),
-                            onPressed: () => _showExerciseDialog(exercise: ex),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: exercises.length,
+                    itemBuilder: (context, index) {
+                      final ex = exercises[index];
+                      final assignedTags =
+                          tags.where((t) => ex.tagIds.contains(t.id)).toList();
+
+                      return Card(
+                        elevation: 2,
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        child: ListTile(
+                          title: Text(
+                            ex.title,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () async {
-                              await _exerciseService.deleteExercise(ex.id);
-                            },
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (ex.description.isNotEmpty) ...[
+                                Text(ex.description),
+                                const SizedBox(height: 4),
+                              ],
+                              if (assignedTags.isNotEmpty)
+                                Wrap(
+                                  spacing: 4,
+                                  children: assignedTags.map((t) {
+                                    return Chip(
+                                      label: Text(
+                                        t.name,
+                                        style: const TextStyle(
+                                            fontSize: 10, color: Colors.white),
+                                      ),
+                                      backgroundColor: t.color,
+                                      visualDensity: VisualDensity.compact,
+                                      padding: EdgeInsets.zero,
+                                    );
+                                  }).toList(),
+                                ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit, color: Colors.blue),
+                                tooltip: 'Übung bearbeiten',
+                                onPressed: () => _showExerciseDialog(exercise: ex),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.red),
+                                tooltip: 'Übung löschen',
+                                onPressed: () async {
+                                  await _exerciseService.deleteExercise(ex.id);
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               );
             },
-          );
-        },
-      ),
+          ),
+        ),
+      ],
     );
   }
 }

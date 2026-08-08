@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/performance_test_model.dart';
-import '../models/exercise_model.dart'; // NEU: Import für Exercise
+import '../models/exercise_model.dart';
 import '../services/test_service.dart';
-import '../services/exercise_service.dart'; // NEU: Import für ExerciseService
+import '../services/exercise_service.dart';
 
-/// Übersichtsbildschirm für Leistungstests (Erstellung & Vorschau für Trainer)
+/// Übersichtsbildschirm für Leistungstests (Erstellung & Vorschau für Trainer).
+/// Fügt sich ohne doppeltes Scaffold/AppBar nahtlos in den TrainerMainScreen ein.
 class PerformanceTestScreen extends StatefulWidget {
   const PerformanceTestScreen({super.key});
 
@@ -132,63 +133,86 @@ class _PerformanceTestScreenState extends State<PerformanceTestScreen> {
       builder: (context, exerciseSnapshot) {
         final availableExercises = exerciseSnapshot.data ?? [];
 
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Leistungstests verwalten'),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.add),
-                tooltip: 'Neuen Test anlegen',
-                onPressed: () => _showCreateTestDialog(availableExercises),
-              ),
-            ],
-          ),
-          body: StreamBuilder<List<PerformanceTest>>(
-            stream: _testService.getTestTemplates(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final tests = snapshot.data ?? [];
-
-              if (tests.isEmpty) {
-                return const Center(
-                  child: Text(
-                    'Noch keine Leistungstests angelegt.\nKlicke oben auf "+", um einen neuen Test zu erstellen.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey),
+        // KEIN Scaffold und KEINE innere AppBar mehr!
+        // Stattdessen direkte Column mit Aktionsleiste und Stream der Leistungstests.
+        return Column(
+          children: [
+            // AKTIONSLEISTE OBEN (Button zum Anlegen neuer Leistungstests)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              color: Theme.of(context).cardColor,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Verfügbare Testvorlagen',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   ),
-                );
-              }
-
-              return ListView.builder(
-                padding: const EdgeInsets.all(12),
-                itemCount: tests.length,
-                itemBuilder: (context, index) {
-                  final test = tests[index];
-                  return Card(
-                    elevation: 2,
-                    margin: const EdgeInsets.symmetric(vertical: 6),
-                    child: ListTile(
-                      leading: const CircleAvatar(
-                        backgroundColor: Colors.deepOrange,
-                        child: Icon(Icons.assignment, color: Colors.white),
-                      ),
-                      title: Text(
-                        test.title,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(
-                        '${test.description}\nAnzahl Übungen: ${test.exerciseIds.length}',
-                      ),
-                      isThreeLine: true,
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Neuer Test'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepOrange,
+                      foregroundColor: Colors.white,
                     ),
+                    onPressed: () => _showCreateTestDialog(availableExercises),
+                  ),
+                ],
+              ),
+            ),
+
+            const Divider(height: 1),
+
+            // LISTE DER LEISTUNGSTESTS
+            Expanded(
+              child: StreamBuilder<List<PerformanceTest>>(
+                stream: _testService.getTestTemplates(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final tests = snapshot.data ?? [];
+
+                  if (tests.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'Noch keine Leistungstests angelegt.\nKlicke oben auf "Neuer Test", um eine Vorlage zu erstellen.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: tests.length,
+                    itemBuilder: (context, index) {
+                      final test = tests[index];
+                      return Card(
+                        elevation: 2,
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        child: ListTile(
+                          leading: const CircleAvatar(
+                            backgroundColor: Colors.deepOrange,
+                            child: Icon(Icons.assignment, color: Colors.white),
+                          ),
+                          title: Text(
+                            test.title,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            '${test.description}\nAnzahl Übungen: ${test.exerciseIds.length}',
+                          ),
+                          isThreeLine: true,
+                        ),
+                      );
+                    },
                   );
                 },
-              );
-            },
-          ),
+              ),
+            ),
+          ],
         );
       },
     );
