@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "589387746591",
+    "firebase_url": "https://dart-coach-app-default-rtdb.europe-west1.firebasedatabase.app",
     "project_id": "dart-coach-app",
     "storage_bucket": "dart-coach-app.firebasestorage.app"
   },
