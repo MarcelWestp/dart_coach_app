@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 /// Art der Übungsvorgabe im Wochenplan
 enum TargetType { none, duration, reps }
 
