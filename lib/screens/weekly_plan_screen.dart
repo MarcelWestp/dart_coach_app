@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
-
 import '../models/exercise_model.dart';
 import '../models/result_model.dart';
 import '../models/weekly_plan_model.dart';
 import '../models/performance_test_model.dart';
 import '../models/tag_model.dart';
-
-import '../services/tag_service.dart';
 import '../services/exercise_service.dart';
 import '../services/plan_service.dart';
 import '../services/result_service.dart';
 import '../services/test_service.dart';
-
+import '../services/tag_service.dart';
 import 'exercise_history_screen.dart';
 import 'take_test_screen.dart';
 
-/// Wochenansicht mit integrierter Leistungstest-Zuweisung und Tagesübungen
+/// Wochenansicht mit integrierter Leistungstest-Zuweisung, Tag-Filtern und Vorgaben
 class WeeklyPlanScreen extends StatefulWidget {
   final String targetPlayerId;
   final bool isTrainer;
@@ -48,7 +45,7 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
     'Donnerstag',
     'Freitag',
     'Samstag',
-    'Sonntag',
+    'Sonntag'
   ];
 
   @override
@@ -59,11 +56,7 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
   }
 
   void _updateWeekAndYear() {
-    int w =
-        ((_selectedDate.difference(DateTime(_selectedDate.year, 1, 1)).inDays +
-                    1) /
-                7)
-            .ceil();
+    int w = ((_selectedDate.difference(DateTime(_selectedDate.year, 1, 1)).inDays + 1) / 7).ceil();
     _currentWeekNumber = w > 52 ? 52 : (w == 0 ? 1 : w);
     _currentYear = _selectedDate.year;
   }
@@ -75,20 +68,15 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
     });
   }
 
-  /// Dialog für Trainer zur Zuweisung eines Leistungstests für die aktuelle KW (Max. 1 Test pro Woche)
-  void _showAssignTestDialog(
-    List<PerformanceTest> availableTests,
-    String currentTrainerId,
-  ) {
+  /// Dialog für Trainer zur Zuweisung eines Leistungstests für die aktuelle KW
+  void _showAssignTestDialog(List<PerformanceTest> availableTests, String currentTrainerId) {
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Text('Leistungstest für KW $_currentWeekNumber zuweisen'),
           content: availableTests.isEmpty
-              ? const Text(
-                  'Keine Leistungstest-Vorlagen vorhanden. Bitte zuerst unter "Leistungstests" anlegen.',
-                )
+              ? const Text('Keine Leistungstest-Vorlagen vorhanden. Bitte zuerst unter "Leistungstests" anlegen.')
               : SizedBox(
                   width: double.maxFinite,
                   child: ListView.builder(
@@ -97,14 +85,9 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                     itemBuilder: (context, index) {
                       final test = availableTests[index];
                       return ListTile(
-                        leading: const Icon(
-                          Icons.assignment,
-                          color: Colors.deepOrange,
-                        ),
+                        leading: const Icon(Icons.assignment, color: Colors.deepOrange),
                         title: Text(test.title),
-                        subtitle: Text(
-                          'Enthaltene Übungen: ${test.exerciseIds.length}',
-                        ),
+                        subtitle: Text('Enthaltene Übungen: ${test.exerciseIds.length}'),
                         onTap: () async {
                           final assignment = AssignedTest(
                             id: '',
@@ -120,11 +103,7 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                           if (mounted) {
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Test "${test.title}" zugewiesen!',
-                                ),
-                              ),
+                              SnackBar(content: Text('Test "${test.title}" zugewiesen!')),
                             );
                           }
                         },
@@ -143,11 +122,8 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
     );
   }
 
-  /// Öffnet den Dialog zum Eintragen oder Korrigieren eines Ergebnisses
-  void _showEnterOrEditResultDialog(
-    Exercise exercise, {
-    ExerciseResult? existingResult,
-  }) {
+  /// Dialog zum Eintragen oder Korrigieren eines Ergebnisses
+  void _showEnterOrEditResultDialog(Exercise exercise, {ExerciseResult? existingResult}) {
     final scoreController = TextEditingController(
       text: existingResult?.score?.toString() ?? '',
     );
@@ -173,10 +149,7 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
             children: [
               Text(
                 isEditing ? 'Ergebnis korrigieren' : 'Ergebnis eintragen',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
               Text(
@@ -192,7 +165,34 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (exercise.description.isNotEmpty) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10.0),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Anleitung / Beschreibung:',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          exercise.description,
+                          style: const TextStyle(fontSize: 13, color: Colors.black87),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 if (exercise.metricType == MetricType.score)
                   TextField(
                     controller: scoreController,
@@ -244,9 +244,7 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                   id: isEditing ? existingResult.id : '',
                   playerId: widget.targetPlayerId,
                   exerciseId: exercise.id,
-                  timestamp: isEditing
-                      ? existingResult.timestamp
-                      : DateTime.now(),
+                  timestamp: isEditing ? existingResult.timestamp : DateTime.now(),
                   score: int.tryParse(scoreController.text.trim()),
                   hits: int.tryParse(hitsController.text.trim()),
                   attempts: int.tryParse(attemptsController.text.trim()),
@@ -284,6 +282,7 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
     );
   }
 
+  /// Bearbeiten der Tagesübungen inklusive Tag-Filter und Dauer/Wiederholungs-Vorgabe
   void _editDaySchedule(
     TrainingPlan currentPlan,
     String dayName,
@@ -291,11 +290,14 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
   ) {
     final daySchedule = currentPlan.days.firstWhere(
       (d) => d.dayOfWeek == dayName,
-      orElse: () => DailySchedule(dayOfWeek: dayName, exerciseIds: []),
+      orElse: () => DailySchedule(dayOfWeek: dayName, scheduledExercises: []),
     );
 
-    final List<String> selectedIds = List.from(daySchedule.exerciseIds);
-    String? selectedFilterTagId; // Filter für ausgewählte Tag-ID
+    final Map<String, ScheduledExercise> selectedMap = {
+      for (var se in daySchedule.scheduledExercises) se.exerciseId: se
+    };
+
+    String? selectedFilterTagId;
 
     showDialog(
       context: context,
@@ -307,100 +309,167 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
               builder: (context, tagSnapshot) {
                 final tags = tagSnapshot.data ?? [];
 
-                // Übungen nach dem gewählten Tag filtern (falls ein Filter aktiv ist)
                 final filteredExercises = selectedFilterTagId == null
                     ? availableExercises
                     : availableExercises
-                          .where((e) => e.tagIds.contains(selectedFilterTagId))
-                          .toList();
+                        .where((e) => e.tagIds.contains(selectedFilterTagId))
+                        .toList();
 
                 return AlertDialog(
                   title: Text('Übungen für $dayName (KW $_currentWeekNumber)'),
-                  content: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // TAG-FILTERLEISTE
-                        if (tags.isNotEmpty) ...[
-                          const Text(
-                            'Nach Tag filtern:',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                  content: SizedBox(
+                    width: double.maxFinite,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (tags.isNotEmpty) ...[
+                            const Text('Nach Tag filtern:',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                            const SizedBox(height: 6),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  ChoiceChip(
+                                    label: const Text('Alle'),
+                                    selected: selectedFilterTagId == null,
+                                    onSelected: (selected) {
+                                      if (selected) {
+                                        setDialogState(() => selectedFilterTagId = null);
+                                      }
+                                    },
+                                  ),
+                                  const SizedBox(width: 6),
+                                  ...tags.map((tag) {
+                                    final isSelected = selectedFilterTagId == tag.id;
+                                    return Padding(
+                                      padding: const EdgeInsets.only(right: 6.0),
+                                      child: ChoiceChip(
+                                        label: Text(tag.name),
+                                        selected: isSelected,
+                                        selectedColor: tag.color.withOpacity(0.3),
+                                        onSelected: (selected) {
+                                          setDialogState(() {
+                                            selectedFilterTagId = selected ? tag.id : null;
+                                          });
+                                        },
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 6),
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: [
-                                ChoiceChip(
-                                  label: const Text('Alle'),
-                                  selected: selectedFilterTagId == null,
-                                  onSelected: (selected) {
-                                    if (selected) {
-                                      setDialogState(
-                                        () => selectedFilterTagId = null,
-                                      );
-                                    }
-                                  },
-                                ),
-                                const SizedBox(width: 6),
-                                ...tags.map((tag) {
-                                  final isSelected =
-                                      selectedFilterTagId == tag.id;
-                                  return Padding(
-                                    padding: const EdgeInsets.only(right: 6.0),
-                                    child: ChoiceChip(
-                                      label: Text(tag.name),
-                                      selected: isSelected,
-                                      selectedColor: tag.color.withOpacity(0.3),
-                                      onSelected: (selected) {
+                            const Divider(),
+                          ],
+
+                          ...filteredExercises.map((ex) {
+                            final isSelected = selectedMap.containsKey(ex.id);
+                            final currentScheduled = selectedMap[ex.id] ??
+                                ScheduledExercise(exerciseId: ex.id);
+
+                            return Card(
+                              margin: const EdgeInsets.symmetric(vertical: 4),
+                              elevation: isSelected ? 2 : 0,
+                              color: isSelected ? Colors.deepOrange.shade50 : null,
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Column(
+                                  children: [
+                                    CheckboxListTile(
+                                      dense: true,
+                                      title: Text(ex.title,
+                                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                                      subtitle: Text(ex.description,
+                                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                                      value: isSelected,
+                                      activeColor: Colors.deepOrange,
+                                      onChanged: (val) {
                                         setDialogState(() {
-                                          selectedFilterTagId = selected
-                                              ? tag.id
-                                              : null;
+                                          if (val == true) {
+                                            selectedMap[ex.id] = ScheduledExercise(exerciseId: ex.id);
+                                          } else {
+                                            selectedMap.remove(ex.id);
+                                          }
                                         });
                                       },
                                     ),
-                                  );
-                                }),
-                              ],
-                            ),
-                          ),
-                          const Divider(),
-                        ],
-
-                        // LISTE GEFILTERTER ÜBUNGEN
-                        if (filteredExercises.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.all(12.0),
-                            child: Text(
-                              'Keine Übungen für diesen Tag-Filter gefunden.',
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                          )
-                        else
-                          ...filteredExercises.map((ex) {
-                            final isChecked = selectedIds.contains(ex.id);
-                            return CheckboxListTile(
-                              title: Text(ex.title),
-                              subtitle: Text('Typ: ${ex.metricType.name}'),
-                              value: isChecked,
-                              activeColor: Colors.deepOrange,
-                              onChanged: (val) {
-                                setDialogState(() {
-                                  if (val == true) {
-                                    selectedIds.add(ex.id);
-                                  } else {
-                                    selectedIds.remove(ex.id);
-                                  }
-                                });
-                              },
+                                    if (isSelected) ...[
+                                      const Divider(height: 1),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12.0, vertical: 8.0),
+                                        child: Row(
+                                          children: [
+                                            DropdownButton<TargetType>(
+                                              value: currentScheduled.targetType,
+                                              underline: const SizedBox(),
+                                              items: const [
+                                                DropdownMenuItem(
+                                                  value: TargetType.none,
+                                                  child: Text('Ohne Vorgabe'),
+                                                ),
+                                                DropdownMenuItem(
+                                                  value: TargetType.duration,
+                                                  child: Text('⏱️ Dauer'),
+                                                ),
+                                                DropdownMenuItem(
+                                                  value: TargetType.reps,
+                                                  child: Text('🔁 Durchgänge'),
+                                                ),
+                                              ],
+                                              onChanged: (newType) {
+                                                if (newType != null) {
+                                                  setDialogState(() {
+                                                    selectedMap[ex.id] = ScheduledExercise(
+                                                      exerciseId: ex.id,
+                                                      targetType: newType,
+                                                      targetValue: currentScheduled.targetValue,
+                                                    );
+                                                  });
+                                                }
+                                              },
+                                            ),
+                                            const SizedBox(width: 8),
+                                            if (currentScheduled.targetType != TargetType.none)
+                                              Expanded(
+                                                child: TextField(
+                                                  controller: TextEditingController(
+                                                    text: currentScheduled.targetValue,
+                                                  )..selection = TextSelection.collapsed(
+                                                      offset: currentScheduled.targetValue.length),
+                                                  decoration: InputDecoration(
+                                                    hintText: currentScheduled.targetType ==
+                                                            TargetType.duration
+                                                        ? 'z. B. 15 Min'
+                                                        : 'z. B. 5 Sätze',
+                                                    isDense: true,
+                                                    contentPadding:
+                                                        const EdgeInsets.symmetric(
+                                                            horizontal: 8, vertical: 8),
+                                                    border: const OutlineInputBorder(),
+                                                  ),
+                                                  onChanged: (val) {
+                                                    selectedMap[ex.id] = ScheduledExercise(
+                                                      exerciseId: ex.id,
+                                                      targetType: currentScheduled.targetType,
+                                                      targetValue: val,
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
                             );
                           }).toList(),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   actions: [
@@ -414,13 +483,13 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                           if (day == dayName) {
                             return DailySchedule(
                               dayOfWeek: day,
-                              exerciseIds: selectedIds,
+                              scheduledExercises: selectedMap.values.toList(),
                             );
                           }
                           return currentPlan.days.firstWhere(
                             (d) => d.dayOfWeek == day,
-                            orElse: () =>
-                                DailySchedule(dayOfWeek: day, exerciseIds: []),
+                            orElse: () => DailySchedule(
+                                dayOfWeek: day, scheduledExercises: []),
                           );
                         }).toList();
 
@@ -456,10 +525,11 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Wochen-Trainingsplan')),
+      appBar: AppBar(
+        title: const Text('Wochen-Trainingsplan'),
+      ),
       body: Column(
         children: [
-          // KALENDERWOCHEN NAVIGATION
           Container(
             color: Colors.deepOrange.shade50,
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -500,8 +570,7 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                   ),
                   builder: (context, assignedTestSnapshot) {
                     final assignedTest = assignedTestSnapshot.data;
-                    final PerformanceTest? currentWeekTest =
-                        assignedTest != null
+                    final PerformanceTest? currentWeekTest = assignedTest != null
                         ? allTests.firstWhere(
                             (t) => t.id == assignedTest.testId,
                             orElse: () => PerformanceTest(
@@ -519,9 +588,8 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                         final exercises = exerciseSnapshot.data ?? [];
 
                         return StreamBuilder<List<ExerciseResult>>(
-                          stream: _resultService.getResultsForPlayer(
-                            widget.targetPlayerId,
-                          ),
+                          stream: _resultService
+                              .getResultsForPlayer(widget.targetPlayerId),
                           builder: (context, resultSnapshot) {
                             final allResults = resultSnapshot.data ?? [];
 
@@ -535,12 +603,10 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                 if (planSnapshot.connectionState ==
                                     ConnectionState.waiting) {
                                   return const Center(
-                                    child: CircularProgressIndicator(),
-                                  );
+                                      child: CircularProgressIndicator());
                                 }
 
-                                final plan =
-                                    planSnapshot.data ??
+                                final plan = planSnapshot.data ??
                                     TrainingPlan(
                                       id: '',
                                       title: 'Wochenplan',
@@ -549,12 +615,8 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                       year: _currentYear,
                                       weekNumber: _currentWeekNumber,
                                       days: _daysOfWeek
-                                          .map(
-                                            (d) => DailySchedule(
-                                              dayOfWeek: d,
-                                              exerciseIds: [],
-                                            ),
-                                          )
+                                          .map((d) => DailySchedule(
+                                              dayOfWeek: d, scheduledExercises: []))
                                           .toList(),
                                     );
 
@@ -574,15 +636,12 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                           children: [
                                             Row(
                                               mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
+                                                  MainAxisAlignment.spaceBetween,
                                               children: [
                                                 const Row(
                                                   children: [
-                                                    Icon(
-                                                      Icons.assignment,
-                                                      color: Colors.deepOrange,
-                                                    ),
+                                                    Icon(Icons.assignment,
+                                                        color: Colors.deepOrange),
                                                     SizedBox(width: 8),
                                                     Text(
                                                       'Wochen-Leistungstest',
@@ -590,18 +649,15 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                         fontSize: 16,
                                                         fontWeight:
                                                             FontWeight.bold,
-                                                        color:
-                                                            Colors.deepOrange,
+                                                        color: Colors.deepOrange,
                                                       ),
                                                     ),
                                                   ],
                                                 ),
                                                 if (widget.isTrainer)
                                                   ElevatedButton.icon(
-                                                    icon: const Icon(
-                                                      Icons.edit,
-                                                      size: 14,
-                                                    ),
+                                                    icon: const Icon(Icons.edit,
+                                                        size: 14),
                                                     label: Text(
                                                       currentWeekTest != null
                                                           ? 'Ändern'
@@ -609,16 +665,15 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                     ),
                                                     style:
                                                         ElevatedButton.styleFrom(
-                                                          backgroundColor:
-                                                              Colors.deepOrange,
-                                                          foregroundColor:
-                                                              Colors.white,
-                                                        ),
+                                                      backgroundColor:
+                                                          Colors.deepOrange,
+                                                      foregroundColor: Colors.white,
+                                                    ),
                                                     onPressed: () =>
                                                         _showAssignTestDialog(
-                                                          allTests,
-                                                          plan.trainerId,
-                                                        ),
+                                                      allTests,
+                                                      plan.trainerId,
+                                                    ),
                                                   ),
                                               ],
                                             ),
@@ -635,39 +690,29 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                               Text(
                                                 currentWeekTest.description,
                                                 style: TextStyle(
-                                                  color: Colors.grey.shade800,
-                                                ),
+                                                    color: Colors.grey.shade800),
                                               ),
                                               const SizedBox(height: 12),
                                               if (!widget.isTrainer)
                                                 ElevatedButton.icon(
-                                                  icon: const Icon(
-                                                    Icons.play_arrow,
-                                                  ),
+                                                  icon: const Icon(Icons.play_arrow),
                                                   label: const Text(
-                                                    'Leistungstest starten',
+                                                      'Leistungstest starten'),
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: Colors.green,
+                                                    foregroundColor: Colors.white,
+                                                    minimumSize: const Size(
+                                                        double.infinity, 40),
                                                   ),
-                                                  style:
-                                                      ElevatedButton.styleFrom(
-                                                        backgroundColor:
-                                                            Colors.green,
-                                                        foregroundColor:
-                                                            Colors.white,
-                                                        minimumSize: const Size(
-                                                          double.infinity,
-                                                          40,
-                                                        ),
-                                                      ),
                                                   onPressed: () {
                                                     Navigator.of(context).push(
                                                       MaterialPageRoute(
                                                         builder: (_) =>
                                                             TakeTestScreen(
-                                                              test:
-                                                                  currentWeekTest,
-                                                              playerId: widget
-                                                                  .targetPlayerId,
-                                                            ),
+                                                          test: currentWeekTest,
+                                                          playerId: widget
+                                                              .targetPlayerId,
+                                                        ),
                                                       ),
                                                     );
                                                   },
@@ -691,22 +736,12 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                       final daySchedule = plan.days.firstWhere(
                                         (d) => d.dayOfWeek == dayName,
                                         orElse: () => DailySchedule(
-                                          dayOfWeek: dayName,
-                                          exerciseIds: [],
-                                        ),
+                                            dayOfWeek: dayName, scheduledExercises: []),
                                       );
-
-                                      final dayExercises = exercises
-                                          .where(
-                                            (e) => daySchedule.exerciseIds
-                                                .contains(e.id),
-                                          )
-                                          .toList();
 
                                       return Card(
                                         margin: const EdgeInsets.symmetric(
-                                          vertical: 6,
-                                        ),
+                                            vertical: 6),
                                         elevation: 2,
                                         child: Padding(
                                           padding: const EdgeInsets.all(12.0),
@@ -723,58 +758,59 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                     dayName,
                                                     style: const TextStyle(
                                                       fontSize: 18,
-                                                      fontWeight:
-                                                          FontWeight.bold,
+                                                      fontWeight: FontWeight.bold,
                                                       color: Colors.deepOrange,
                                                     ),
                                                   ),
                                                   if (widget.isTrainer)
                                                     IconButton(
-                                                      icon: const Icon(
-                                                        Icons.edit,
-                                                        color:
-                                                            Colors.deepOrange,
-                                                      ),
+                                                      icon: const Icon(Icons.edit,
+                                                          color: Colors.deepOrange),
                                                       onPressed: () =>
                                                           _editDaySchedule(
-                                                            plan,
-                                                            dayName,
-                                                            exercises,
-                                                          ),
+                                                        plan,
+                                                        dayName,
+                                                        exercises,
+                                                      ),
                                                     ),
                                                 ],
                                               ),
                                               const Divider(),
-                                              if (dayExercises.isEmpty)
+                                              if (daySchedule.scheduledExercises.isEmpty)
                                                 const Padding(
                                                   padding: EdgeInsets.symmetric(
-                                                    vertical: 8.0,
-                                                  ),
+                                                      vertical: 8.0),
                                                   child: Text(
                                                     'Keine Übungen eingeplant',
                                                     style: TextStyle(
                                                       color: Colors.grey,
-                                                      fontStyle:
-                                                          FontStyle.italic,
+                                                      fontStyle: FontStyle.italic,
                                                     ),
                                                   ),
                                                 )
                                               else
-                                                ...dayExercises.map((ex) {
+                                                ...daySchedule.scheduledExercises.map((scheduledEx) {
+                                                  final ex = exercises.firstWhere(
+                                                    (e) => e.id == scheduledEx.exerciseId,
+                                                    orElse: () => Exercise(
+                                                      id: scheduledEx.exerciseId,
+                                                      title: 'Unbekannte Übung',
+                                                      description: '',
+                                                      metricType: MetricType.score,
+                                                    ),
+                                                  );
+
                                                   final existingResults =
                                                       allResults
-                                                          .where(
-                                                            (r) =>
-                                                                r.exerciseId ==
-                                                                ex.id,
-                                                          )
+                                                          .where((r) =>
+                                                              r.exerciseId == ex.id)
                                                           .toList();
 
                                                   final ExerciseResult?
-                                                  existingResult =
+                                                      existingResult =
                                                       existingResults.isNotEmpty
-                                                      ? existingResults.first
-                                                      : null;
+                                                          ? existingResults.first
+                                                          : null;
 
                                                   final bool isDone =
                                                       existingResult != null;
@@ -786,40 +822,62 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                       resultText =
                                                           '${existingResult.score} Punkte';
                                                     } else if (ex.metricType ==
-                                                        MetricType
-                                                            .hitsAndAttempts) {
+                                                        MetricType.hitsAndAttempts) {
                                                       resultText =
                                                           '${existingResult.hits}/${existingResult.attempts} Treffer';
                                                     } else if (ex.metricType ==
-                                                        MetricType
-                                                            .timeInSeconds) {
+                                                        MetricType.timeInSeconds) {
                                                       resultText =
                                                           '${existingResult.timeInSeconds} Sek.';
                                                     }
                                                   }
 
+                                                  String targetText = '';
+                                                  if (scheduledEx.targetType == TargetType.duration &&
+                                                      scheduledEx.targetValue.isNotEmpty) {
+                                                    targetText = '⏱️ ${scheduledEx.targetValue}';
+                                                  } else if (scheduledEx.targetType == TargetType.reps &&
+                                                      scheduledEx.targetValue.isNotEmpty) {
+                                                    targetText = '🔁 ${scheduledEx.targetValue}';
+                                                  }
+
                                                   return ListTile(
-                                                    contentPadding:
-                                                        EdgeInsets.zero,
+                                                    contentPadding: EdgeInsets.zero,
                                                     leading: Icon(
                                                       isDone
                                                           ? Icons.check_circle
-                                                          : Icons
-                                                                .fitness_center,
+                                                          : Icons.fitness_center,
                                                       color: isDone
                                                           ? Colors.green
                                                           : Colors.deepOrange,
                                                     ),
-                                                    title: Text(
-                                                      ex.title,
-                                                      style: TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        decoration: isDone
-                                                            ? TextDecoration
-                                                                  .lineThrough
-                                                            : null,
-                                                      ),
+                                                    title: Row(
+                                                      children: [
+                                                        Expanded(
+                                                          child: Text(
+                                                            ex.title,
+                                                            style: TextStyle(
+                                                              fontWeight: FontWeight.w600,
+                                                              decoration: isDone
+                                                                  ? TextDecoration.lineThrough
+                                                                  : null,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        if (targetText.isNotEmpty)
+                                                          Padding(
+                                                            padding: const EdgeInsets.only(left: 6.0),
+                                                            child: Chip(
+                                                              label: Text(targetText,
+                                                                  style: const TextStyle(
+                                                                      fontSize: 10,
+                                                                      color: Colors.deepOrange)),
+                                                              backgroundColor: Colors.deepOrange.shade50,
+                                                              visualDensity: VisualDensity.compact,
+                                                              padding: EdgeInsets.zero,
+                                                            ),
+                                                          ),
+                                                      ],
                                                     ),
                                                     subtitle: Text(
                                                       isDone
@@ -827,12 +885,8 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                           : ex.description,
                                                       style: TextStyle(
                                                         color: isDone
-                                                            ? Colors
-                                                                  .green
-                                                                  .shade700
-                                                            : Colors
-                                                                  .grey
-                                                                  .shade700,
+                                                            ? Colors.green.shade700
+                                                            : Colors.grey.shade700,
                                                         fontWeight: isDone
                                                             ? FontWeight.bold
                                                             : FontWeight.normal,
@@ -844,22 +898,18 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                       children: [
                                                         IconButton(
                                                           icon: const Icon(
-                                                            Icons.show_chart,
-                                                            color: Colors.blue,
-                                                          ),
+                                                              Icons.show_chart,
+                                                              color: Colors.blue),
                                                           onPressed: () {
-                                                            Navigator.of(
-                                                              context,
-                                                            ).push(
+                                                            Navigator.of(context)
+                                                                .push(
                                                               MaterialPageRoute(
                                                                 builder: (_) =>
                                                                     ExerciseHistoryScreen(
-                                                                      exercise:
-                                                                          ex,
-                                                                      playerId:
-                                                                          widget
-                                                                              .targetPlayerId,
-                                                                    ),
+                                                                  exercise: ex,
+                                                                  playerId: widget
+                                                                      .targetPlayerId,
+                                                                ),
                                                               ),
                                                             );
                                                           },
@@ -868,18 +918,17 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                           ElevatedButton.icon(
                                                             onPressed: () =>
                                                                 _showEnterOrEditResultDialog(
-                                                                  ex,
-                                                                  existingResult:
-                                                                      existingResult,
-                                                                ),
+                                                              ex,
+                                                              existingResult:
+                                                                  existingResult,
+                                                            ),
                                                             icon: const Icon(
-                                                              Icons.edit,
-                                                              size: 16,
-                                                            ),
+                                                                Icons.edit,
+                                                                size: 16),
                                                             label: const Text(
-                                                              'Korrigieren',
-                                                            ),
-                                                            style: ElevatedButton.styleFrom(
+                                                                'Korrigieren'),
+                                                            style: ElevatedButton
+                                                                .styleFrom(
                                                               backgroundColor:
                                                                   Colors.orange,
                                                               foregroundColor:
@@ -890,16 +939,15 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                           ElevatedButton.icon(
                                                             onPressed: () =>
                                                                 _showEnterOrEditResultDialog(
-                                                                  ex,
-                                                                ),
+                                                              ex,
+                                                            ),
                                                             icon: const Icon(
-                                                              Icons.check,
-                                                              size: 16,
-                                                            ),
+                                                                Icons.check,
+                                                                size: 16),
                                                             label: const Text(
-                                                              'Eintragen',
-                                                            ),
-                                                            style: ElevatedButton.styleFrom(
+                                                                'Eintragen'),
+                                                            style: ElevatedButton
+                                                                .styleFrom(
                                                               backgroundColor:
                                                                   Colors.green,
                                                               foregroundColor:

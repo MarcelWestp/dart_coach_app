@@ -1,36 +1,85 @@
-/// Zuordnung von Übungen zu einzelnen Wochentagen
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+/// Art der Übungsvorgabe im Wochenplan
+enum TargetType { none, duration, reps }
+
+/// Einzelne eingeplante Übung mit optionaler Zielvorgabe (Dauer oder Wiederholungen)
+class ScheduledExercise {
+  final String exerciseId;
+  final TargetType targetType;
+  final String targetValue; // z. B. "15 Min" oder "5 Serien"
+
+  ScheduledExercise({
+    required this.exerciseId,
+    this.targetType = TargetType.none,
+    this.targetValue = '',
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'exerciseId': exerciseId,
+      'targetType': targetType.name,
+      'targetValue': targetValue,
+    };
+  }
+
+  factory ScheduledExercise.fromMap(Map<String, dynamic> map) {
+    return ScheduledExercise(
+      exerciseId: map['exerciseId'] ?? '',
+      targetType: TargetType.values.firstWhere(
+        (e) => e.name == map['targetType'],
+        orElse: () => TargetType.none,
+      ),
+      targetValue: map['targetValue'] ?? '',
+    );
+  }
+}
+
+/// Tagesplan eines Spielers mit einer Liste zugewiesener ScheduledExercises
 class DailySchedule {
-  final String dayOfWeek; // z.B. "Montag", "Dienstag"
-  final List<String> exerciseIds; // IDs der zugewiesenen Übungen
+  final String dayOfWeek;
+  final List<ScheduledExercise> scheduledExercises;
 
   DailySchedule({
     required this.dayOfWeek,
-    required this.exerciseIds,
+    required this.scheduledExercises,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'dayOfWeek': dayOfWeek,
-      'exerciseIds': exerciseIds,
+      'scheduledExercises': scheduledExercises.map((e) => e.toMap()).toList(),
     };
   }
 
   factory DailySchedule.fromMap(Map<String, dynamic> map) {
+    // Abwärtskompatibilität: Falls alte Daten noch als 'exerciseIds' (List<String>) gespeichert waren
+    List<ScheduledExercise> items = [];
+    if (map['scheduledExercises'] != null) {
+      items = (map['scheduledExercises'] as List)
+          .map((item) => ScheduledExercise.fromMap(Map<String, dynamic>.from(item)))
+          .toList();
+    } else if (map['exerciseIds'] != null) {
+      items = (map['exerciseIds'] as List)
+          .map((id) => ScheduledExercise(exerciseId: id.toString()))
+          .toList();
+    }
+
     return DailySchedule(
       dayOfWeek: map['dayOfWeek'] ?? '',
-      exerciseIds: List<String>.from(map['exerciseIds'] ?? []),
+      scheduledExercises: items,
     );
   }
 }
 
-/// Modell für einen Wochen-Trainingsplan (inkl. Kalenderwoche und Jahr)
+/// Vollständiger Wochen-Trainingsplan
 class TrainingPlan {
   final String id;
   final String title;
-  final String playerId;   // Für welchen Spieler?
-  final String trainerId;  // Wer hat den Plan erstellt?
-  final int year;          // z. B. 2026
-  final int weekNumber;    // z. B. Kalenderwoche 32
+  final String playerId;
+  final String trainerId;
+  final int year;
+  final int weekNumber;
   final List<DailySchedule> days;
 
   TrainingPlan({
@@ -62,10 +111,11 @@ class TrainingPlan {
       trainerId: map['trainerId'] ?? '',
       year: map['year'] ?? DateTime.now().year,
       weekNumber: map['weekNumber'] ?? 1,
-      days: (map['days'] as List<dynamic>?)
-              ?.map((d) => DailySchedule.fromMap(d))
-              .toList() ??
-          [],
+      days: map['days'] != null
+          ? (map['days'] as List)
+              .map((d) => DailySchedule.fromMap(Map<String, dynamic>.from(d)))
+              .toList()
+          : [],
     );
   }
 }
