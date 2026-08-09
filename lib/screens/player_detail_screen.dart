@@ -16,16 +16,21 @@ class PlayerDetailScreen extends StatelessWidget {
   double _getValue(ExerciseResult r, MetricType metricType) {
     if (metricType == MetricType.score) {
       return (r.score ?? 0).toDouble();
-    } else if (metricType == MetricType.hitsAndAttempts) {
+    } else if (metricType == MetricType.hits) {
       return (r.hits ?? 0).toDouble();
+    } else if (metricType == MetricType.attempts) {
+      return (r.attempts ?? 0).toDouble();
     } else if (metricType == MetricType.timeInSeconds) {
       return (r.timeInSeconds ?? 0).toDouble();
     }
-    return 0;
+    return 0.0;
   }
 
   /// Berechnet den 30-Tage-Trend für eine bestimmte Übung
-  TrendData _calculateTrend(List<ExerciseResult> results, MetricType metricType) {
+  TrendData _calculateTrend(
+    List<ExerciseResult> results,
+    MetricType metricType,
+  ) {
     if (results.length < 2) {
       return TrendData(
         label: 'Keine Daten',
@@ -44,10 +49,12 @@ class PlayerDetailScreen extends StatelessWidget {
 
     double avgFirst =
         firstHalf.map((r) => _getValue(r, metricType)).reduce((a, b) => a + b) /
-            firstHalf.length;
+        firstHalf.length;
     double avgSecond =
-        secondHalf.map((r) => _getValue(r, metricType)).reduce((a, b) => a + b) /
-            secondHalf.length;
+        secondHalf
+            .map((r) => _getValue(r, metricType))
+            .reduce((a, b) => a + b) /
+        secondHalf.length;
 
     if (avgFirst == 0) avgFirst = 1;
 
@@ -96,9 +103,7 @@ class PlayerDetailScreen extends StatelessWidget {
     final ResultService resultService = ResultService();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Übungs-Analyse: ${player.name}'),
-      ),
+      appBar: AppBar(title: Text('Übungs-Analyse: ${player.name}')),
       body: StreamBuilder<List<Exercise>>(
         stream: exerciseService.getExercises(),
         builder: (context, exerciseSnapshot) {
@@ -138,7 +143,10 @@ class PlayerDetailScreen extends StatelessWidget {
                       .where((r) => r.timestamp.isAfter(thirtyDaysAgo))
                       .toList();
 
-                  final trend = _calculateTrend(recentResults, exercise.metricType);
+                  final trend = _calculateTrend(
+                    recentResults,
+                    exercise.metricType,
+                  );
                   final int playCount = recentResults.length;
 
                   return Card(

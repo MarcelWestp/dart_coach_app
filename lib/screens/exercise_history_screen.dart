@@ -70,8 +70,10 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
   double _getValue(ExerciseResult r) {
     if (widget.exercise.metricType == MetricType.score) {
       return (r.score ?? 0).toDouble();
-    } else if (widget.exercise.metricType == MetricType.hitsAndAttempts) {
-      return (r.hits ?? 0).toDouble();
+    } else if (widget.exercise.metricType == MetricType.hits) {
+      return r.hits?.toDouble() ?? 0.0;
+    } else if (widget.exercise.metricType == MetricType.attempts) {
+      return r.attempts?.toDouble() ?? 0.0;
     } else if (widget.exercise.metricType == MetricType.timeInSeconds) {
       return (r.timeInSeconds ?? 0).toDouble();
     }
@@ -354,12 +356,14 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                               sideTitles: SideTitles(
                                 showTitles: true,
                                 reservedSize: 30,
-                                interval: 1, // Für jeden Datenpunkt eine Beschriftung rendern
+                                interval:
+                                    1, // Für jeden Datenpunkt eine Beschriftung rendern
                                 getTitlesWidget: (double value, TitleMeta meta) {
                                   int index = value.toInt();
 
                                   // Validierung, ob der Index im zulässigen Bereich liegt
-                                  if (index >= 0 && index < sortedFiltered.length) {
+                                  if (index >= 0 &&
+                                      index < sortedFiltered.length) {
                                     final DateTime date =
                                         sortedFiltered[index].timestamp;
                                     final String formattedDate =
@@ -427,10 +431,11 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                     String displayVal = '';
                     if (widget.exercise.metricType == MetricType.score) {
                       displayVal = '${res.score ?? 0} Punkte';
+                    } else if (widget.exercise.metricType == MetricType.hits) {
+                      displayVal = '${res.hits} Treffer';
                     } else if (widget.exercise.metricType ==
-                        MetricType.hitsAndAttempts) {
-                      displayVal =
-                          '${res.hits ?? 0} / ${res.attempts ?? 0} Treffer';
+                        MetricType.attempts) {
+                      displayVal = '${res.attempts} Versuche';
                     } else if (widget.exercise.metricType ==
                         MetricType.timeInSeconds) {
                       displayVal = '${res.timeInSeconds ?? 0} Sek.';
@@ -446,7 +451,10 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                       elevation: 1,
                       child: ListTile(
                         dense: true,
-                        leading: const Icon(Icons.history, color: Colors.deepOrange),
+                        leading: const Icon(
+                          Icons.history,
+                          color: Colors.deepOrange,
+                        ),
                         title: Text(
                           '$displayVal$roundInfo',
                           style: const TextStyle(fontWeight: FontWeight.bold),

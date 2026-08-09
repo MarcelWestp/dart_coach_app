@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_fonts/google_fonts.dart'; // NEU: Google Fonts Paket
 
 // Firebase Options
 import 'firebase_options.dart';
@@ -48,24 +49,41 @@ class MyApp extends StatelessWidget {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeModeNotifier,
       builder: (context, currentMode, child) {
+        // Erstellen des Basis-Lichtfarbschemas
+        final lightColorScheme = ColorScheme.fromSeed(
+          seedColor: Colors.deepOrange,
+          brightness: Brightness.light,
+        );
+
+        // Erstellen des Basis-Dunkelfarbschemas
+        final darkColorScheme = ColorScheme.fromSeed(
+          seedColor: Colors.deepOrange,
+          brightness: Brightness.dark,
+        );
+
         return MaterialApp(
           title: 'Dart Coach App',
           debugShowCheckedModeBanner: false,
           themeMode: currentMode,
+
+          // LIGHT THEME mit Google Fonts (Noto Sans)
           theme: ThemeData(
             useMaterial3: true,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: Colors.deepOrange,
-              brightness: Brightness.light,
+            colorScheme: lightColorScheme,
+            textTheme: GoogleFonts.notoSansTextTheme(
+              ThemeData.light().textTheme,
             ),
           ),
+
+          // DARK THEME mit Google Fonts (Noto Sans)
           darkTheme: ThemeData(
             useMaterial3: true,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: Colors.deepOrange,
-              brightness: Brightness.dark,
+            colorScheme: darkColorScheme,
+            textTheme: GoogleFonts.notoSansTextTheme(
+              ThemeData.dark().textTheme,
             ),
           ),
+
           // Einstiegspunkt in die App
           home: const MainNavigationWrapper(),
         );

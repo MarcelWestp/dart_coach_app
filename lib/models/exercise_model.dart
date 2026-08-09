@@ -1,7 +1,37 @@
+import 'package:flutter/material.dart';
 import '../models/weekly_plan_model.dart'; // Für TargetType (none, duration, reps)
 
 /// Der Typ der Erfassungsmethode einer Übung
-enum MetricType { score, hitsAndAttempts, timeInSeconds }
+enum MetricType { score, hits, attempts, timeInSeconds }
+
+/// Erweiterung für lesbare Bezeichnungen und Icons im UI
+extension MetricTypeExtension on MetricType {
+  String get label {
+    switch (this) {
+      case MetricType.score:
+        return 'Punkte / Score';
+      case MetricType.hits:
+        return 'Treffer (Anzahl)';
+      case MetricType.attempts:
+        return 'Versuche (Anzahl)';
+      case MetricType.timeInSeconds:
+        return 'Zeit (Sekunden)';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case MetricType.score:
+        return Icons.score;
+      case MetricType.hits:
+        return Icons.ads_click;
+      case MetricType.attempts:
+        return Icons.repeat;
+      case MetricType.timeInSeconds:
+        return Icons.timer;
+    }
+  }
+}
 
 /// Das Datenmodell für eine Stamm-Übung
 class Exercise {

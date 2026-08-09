@@ -15,6 +15,20 @@ class ExerciseProgressChart extends StatelessWidget {
     required this.metricType,
   });
 
+  /// Hilfsmethode zur Ermittlung der Diagramm-Überschrift
+  String _getChartTitle() {
+    switch (metricType) {
+      case MetricType.score:
+        return 'Leistungsverlauf (Punkte)';
+      case MetricType.hits:
+        return 'Verlauf der Treffer';
+      case MetricType.attempts:
+        return 'Verlauf der Versuche';
+      case MetricType.timeInSeconds:
+        return 'Verlauf der Zeit (Sekunden)';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (results.isEmpty) {
@@ -44,11 +58,10 @@ class ExerciseProgressChart extends StatelessWidget {
       // Je nach Erfassungstyp den richtigen Wert für die Y-Achse auslesen
       if (metricType == MetricType.score) {
         yValue = (res.score ?? 0).toDouble();
-      } else if (metricType == MetricType.hitsAndAttempts) {
-        final hits = res.hits ?? 0;
-        final attempts = res.attempts ?? 1;
-        // Berechnet die Trefferquote in Prozent
-        yValue = attempts > 0 ? (hits / attempts) * 100 : 0.0;
+      } else if (metricType == MetricType.hits) {
+        yValue = (res.hits ?? 0).toDouble();
+      } else if (metricType == MetricType.attempts) {
+        yValue = (res.attempts ?? 0).toDouble();
       } else if (metricType == MetricType.timeInSeconds) {
         yValue = (res.timeInSeconds ?? 0).toDouble();
       }
@@ -65,9 +78,7 @@ class ExerciseProgressChart extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              metricType == MetricType.hitsAndAttempts
-                  ? 'Verlauf der Trefferquote (%)'
-                  : 'Leistungsverlauf',
+              _getChartTitle(),
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
             const SizedBox(height: 16),
@@ -81,9 +92,13 @@ class ExerciseProgressChart extends StatelessWidget {
                     border: Border.all(color: Colors.grey.shade300),
                   ),
                   titlesData: FlTitlesData(
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    // X-ACHSE: SPPIELDATEN ANZEIGEN
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    // X-ACHSE: SPIELDATEN ANZEIGEN
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
@@ -94,7 +109,8 @@ class ExerciseProgressChart extends StatelessWidget {
 
                           // Sicherstellen, dass der Index im Datenbereich liegt
                           if (index >= 0 && index < sortedResults.length) {
-                            final DateTime date = sortedResults[index].timestamp;
+                            final DateTime date =
+                                sortedResults[index].timestamp;
                             // Formatierung des Datums: DD.MM.
                             final String formattedDate =
                                 '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.';

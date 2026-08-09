@@ -21,11 +21,16 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
   /// Dialog zum Erstellen oder Bearbeiten einer Übung
   void _showExerciseDialog({Exercise? exercise}) {
     final titleController = TextEditingController(text: exercise?.title ?? '');
-    final descController = TextEditingController(text: exercise?.description ?? '');
-    final targetValueController = TextEditingController(text: exercise?.defaultTargetValue ?? '');
+    final descController = TextEditingController(
+      text: exercise?.description ?? '',
+    );
+    final targetValueController = TextEditingController(
+      text: exercise?.defaultTargetValue ?? '',
+    );
 
     MetricType selectedMetric = exercise?.metricType ?? MetricType.score;
-    TargetType selectedTargetType = exercise?.defaultTargetType ?? TargetType.none;
+    TargetType selectedTargetType =
+        exercise?.defaultTargetType ?? TargetType.none;
     List<String> selectedTagIds = List.from(exercise?.tagIds ?? []);
 
     final isEditing = exercise != null;
@@ -36,7 +41,9 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text(isEditing ? 'Übung bearbeiten' : 'Neue Übung anlegen'),
+              title: Text(
+                isEditing ? 'Übung bearbeiten' : 'Neue Übung anlegen',
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -73,8 +80,12 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                           child: Text('Punkte / Score'),
                         ),
                         DropdownMenuItem(
-                          value: MetricType.hitsAndAttempts,
-                          child: Text('Treffer / Versuche'),
+                          value: MetricType.hits,
+                          child: Text('Treffer (Anzahl)'),
+                        ),
+                        DropdownMenuItem(
+                          value: MetricType.attempts,
+                          child: Text('Versuche (Anzahl)'),
                         ),
                         DropdownMenuItem(
                           value: MetricType.timeInSeconds,
@@ -82,7 +93,8 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                         ),
                       ],
                       onChanged: (val) {
-                        if (val != null) setDialogState(() => selectedMetric = val);
+                        if (val != null)
+                          setDialogState(() => selectedMetric = val);
                       },
                     ),
                     const SizedBox(height: 16),
@@ -129,7 +141,8 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                             child: TextField(
                               controller: targetValueController,
                               decoration: InputDecoration(
-                                hintText: selectedTargetType == TargetType.duration
+                                hintText:
+                                    selectedTargetType == TargetType.duration
                                     ? 'z. B. 15 Min'
                                     : 'z. B. 10 Serien',
                                 isDense: true,
@@ -143,7 +156,10 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                     const SizedBox(height: 16),
 
                     // TAGS ZUWEISEN
-                    const Text('Tags zuweisen:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Tags zuweisen:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     const SizedBox(height: 8),
                     StreamBuilder<List<ExerciseTag>>(
                       stream: _tagService.getTags(),
@@ -247,7 +263,9 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                 ),
                 onPressed: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const TagManagementScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const TagManagementScreen(),
+                    ),
                   );
                 },
               ),
@@ -297,8 +315,9 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                     itemCount: exercises.length,
                     itemBuilder: (context, index) {
                       final ex = exercises[index];
-                      final assignedTags =
-                          tags.where((t) => ex.tagIds.contains(t.id)).toList();
+                      final assignedTags = tags
+                          .where((t) => ex.tagIds.contains(t.id))
+                          .toList();
 
                       // Vorgabe-Text aufbereiten
                       String targetInfo = '';
@@ -319,7 +338,9 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                               Expanded(
                                 child: Text(
                                   ex.title,
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                               if (targetInfo.isNotEmpty)
@@ -327,7 +348,9 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                                   label: Text(
                                     targetInfo,
                                     style: const TextStyle(
-                                        fontSize: 11, color: Colors.deepOrange),
+                                      fontSize: 11,
+                                      color: Colors.deepOrange,
+                                    ),
                                   ),
                                   backgroundColor: Colors.deepOrange.shade50,
                                   visualDensity: VisualDensity.compact,
@@ -351,7 +374,9 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                                       label: Text(
                                         t.name,
                                         style: const TextStyle(
-                                            fontSize: 10, color: Colors.white),
+                                          fontSize: 10,
+                                          color: Colors.white,
+                                        ),
                                       ),
                                       backgroundColor: t.color,
                                       visualDensity: VisualDensity.compact,
@@ -365,12 +390,19 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.edit, color: Colors.blue),
+                                icon: const Icon(
+                                  Icons.edit,
+                                  color: Colors.blue,
+                                ),
                                 tooltip: 'Übung bearbeiten',
-                                onPressed: () => _showExerciseDialog(exercise: ex),
+                                onPressed: () =>
+                                    _showExerciseDialog(exercise: ex),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                ),
                                 tooltip: 'Übung löschen',
                                 onPressed: () async {
                                   await _exerciseService.deleteExercise(ex.id);
