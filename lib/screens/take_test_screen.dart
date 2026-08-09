@@ -6,6 +6,7 @@ import '../services/exercise_service.dart';
 
 /// Bildschirm zur geführten Durchführung eines Leistungstests durch den Spieler.
 /// Die Zeit wird im Hintergrund ab dem Öffnen des Bildschirms automatisch gemessen.
+/// Ermöglicht zusätzlich die Eingabe einer optionalen Spielernotiz zum Gesamttest.
 class TakeTestScreen extends StatefulWidget {
   final PerformanceTest test;
   final String playerId;
@@ -31,6 +32,9 @@ class _TakeTestScreenState extends State<TakeTestScreen> {
   // Speichert die Text-Controller für die Punkteeingaben pro Übungs-ID
   final Map<String, TextEditingController> _controllers = {};
 
+  // NEU: Controller für die Notiz / Anmerkung des Spielers zum gesamten Test
+  final TextEditingController _noteController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -45,14 +49,16 @@ class _TakeTestScreenState extends State<TakeTestScreen> {
 
   @override
   void dispose() {
-    // Speicherbereinigung der Controller
+    // Speicherbereinigung der Übungs-Controller
     for (var controller in _controllers.values) {
       controller.dispose();
     }
+    // NEU: Speicherbereinigung des Notiz-Controllers
+    _noteController.dispose();
     super.dispose();
   }
 
-  /// Validiert die Eingaben, berechnet Punkte & Dauer und speichert das Ergebnis
+  /// Validiert die Eingaben, berechnet Punkte, Dauer & Notiz und speichert das Ergebnis
   void _submitTest(List<Exercise> testExercises) async {
     final Map<String, int> scores = {};
     int calculatedTotalScore = 0;
@@ -77,6 +83,9 @@ class _TakeTestScreenState extends State<TakeTestScreen> {
     final endTime = DateTime.now();
     final durationInSeconds = endTime.difference(_startTime).inSeconds;
 
+    // SPIELERNOTIZ AUSLESEN (Falls leer, wird null gespeichert)
+    final playerNoteText = _noteController.text.trim();
+
     final result = PerformanceTestResult(
       id: '',
       playerId: widget.playerId,
@@ -85,6 +94,7 @@ class _TakeTestScreenState extends State<TakeTestScreen> {
       exerciseScores: scores,
       totalScore: calculatedTotalScore,
       durationInSeconds: durationInSeconds,
+      note: playerNoteText.isNotEmpty ? playerNoteText : null, // NEU: Notiz mitspeichern
       timestamp: DateTime.now(),
     );
 
@@ -222,6 +232,31 @@ class _TakeTestScreenState extends State<TakeTestScreen> {
                     ),
                   );
                 }),
+
+                const SizedBox(height: 20),
+
+                // NEU: BEREICH FÜR DIE SPIELERNOTIZ
+                const Text(
+                  'Spielernotiz / Anmerkungen zum Test',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Card(
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: TextField(
+                      controller: _noteController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        hintText:
+                            'Optional: Wie war dein Gefühl während des Tests? (z.B. Fokus, Ermüdung, Besonderheiten)',
+                        border: InputBorder.none,
+                        icon: Icon(Icons.note_alt_outlined, color: Colors.deepOrange),
+                      ),
+                    ),
+                  ),
+                ),
 
                 const SizedBox(height: 24),
 

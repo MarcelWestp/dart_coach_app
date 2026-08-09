@@ -4,7 +4,7 @@ import '../models/exercise_model.dart';
 import '../services/test_service.dart';
 import '../services/exercise_service.dart';
 
-/// Übersichtsbildschirm für Leistungstests (Erstellung & Vorschau für Trainer).
+/// Übersichtsbildschirm für Leistungstests (Erstellung, Bearbeitung & Vorschau für Trainer).
 /// Fügt sich ohne doppeltes Scaffold/AppBar nahtlos in den TrainerMainScreen ein.
 class PerformanceTestScreen extends StatefulWidget {
   const PerformanceTestScreen({super.key});
@@ -17,11 +17,23 @@ class _PerformanceTestScreenState extends State<PerformanceTestScreen> {
   final TestService _testService = TestService();
   final ExerciseService _exerciseService = ExerciseService();
 
-  /// Dialog zum Anlegen einer neuen Testvorlage (mit Übungs-Auswahl)
-  void _showCreateTestDialog(List<Exercise> availableExercises) {
-    final titleController = TextEditingController();
-    final descController = TextEditingController();
-    final List<String> selectedExerciseIds = [];
+  /// Kombinierter Dialog zum Anlegen ODERE Bearbeiten einer Testvorlage
+  void _showTestDialog(
+    List<Exercise> availableExercises, {
+    PerformanceTest? existingTest,
+  }) {
+    final bool isEditing = existingTest != null;
+    final titleController = TextEditingController(
+      text: isEditing ? existingTest.title : '',
+    );
+    final descController = TextEditingController(
+      text: isEditing ? existingTest.description : '',
+    );
+
+    // Vorausgewählte Übungs-IDs übernehmen (falls Bearbeitung)
+    final List<String> selectedExerciseIds = isEditing
+        ? List<String>.from(existingTest.exerciseIds)
+        : [];
 
     showDialog(
       context: context,
@@ -29,7 +41,9 @@ class _PerformanceTestScreenState extends State<PerformanceTestScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Neuen Leistungstest anlegen'),
+              title: Text(
+                isEditing ? 'Leistungstest bearbeiten' : 'Neuen Leistungstest anlegen',
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -81,7 +95,7 @@ class _PerformanceTestScreenState extends State<PerformanceTestScreen> {
                             });
                           },
                         );
-                      }).toList(),
+                      }),
                   ],
                 ),
               ),
@@ -96,33 +110,70 @@ class _PerformanceTestScreenState extends State<PerformanceTestScreen> {
                         selectedExerciseIds.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                            content: Text(
-                                'Bitte einen Titel eingeben und mindestens eine Übung auswählen.')),
+                          content: Text(
+                            'Bitte einen Titel eingeben und mindestens eine Übung auswählen.',
+                          ),
+                        ),
                       );
                       return;
                     }
 
-                    final newTest = PerformanceTest(
-                      id: '',
+                    final testData = PerformanceTest(
+                      id: isEditing ? existingTest.id : '',
                       title: titleController.text.trim(),
                       description: descController.text.trim(),
                       exerciseIds: selectedExerciseIds,
                     );
 
-                    await _testService.createTestTemplate(newTest);
+                    if (isEditing) {
+                      await _testService.updateTestTemplate(testData);
+                    } else {
+                      await _testService.createTestTemplate(testData);
+                    }
+
                     if (context.mounted) Navigator.pop(context);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepOrange,
                     foregroundColor: Colors.white,
                   ),
-                  child: const Text('Erstellen'),
+                  child: Text(isEditing ? 'Speichern' : 'Erstellen'),
                 ),
               ],
             );
           },
         );
       },
+    );
+  }
+
+  /// Sicherheitsdialog zum Löschen einer Testvorlage
+  void _confirmDeleteTest(PerformanceTest test) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Leistungstest löschen?'),
+        content: Text(
+          'Möchtest du den Leistungstest "${test.title}" wirklich löschen?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Abbrechen'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await _testService.deleteTestTemplate(test.id);
+              if (context.mounted) Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Löschen'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -133,8 +184,6 @@ class _PerformanceTestScreenState extends State<PerformanceTestScreen> {
       builder: (context, exerciseSnapshot) {
         final availableExercises = exerciseSnapshot.data ?? [];
 
-        // KEIN Scaffold und KEINE innere AppBar mehr!
-        // Stattdessen direkte Column mit Aktionsleiste und Stream der Leistungstests.
         return Column(
           children: [
             // AKTIONSLEISTE OBEN (Button zum Anlegen neuer Leistungstests)
@@ -155,7 +204,7 @@ class _PerformanceTestScreenState extends State<PerformanceTestScreen> {
                       backgroundColor: Colors.deepOrange,
                       foregroundColor: Colors.white,
                     ),
-                    onPressed: () => _showCreateTestDialog(availableExercises),
+                    onPressed: () => _showTestDialog(availableExercises),
                   ),
                 ],
               ),
@@ -169,7 +218,9 @@ class _PerformanceTestScreenState extends State<PerformanceTestScreen> {
                 stream: _testService.getTestTemplates(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(
+                      child: CircularProgressIndicator(color: Colors.deepOrange),
+                    );
                   }
 
                   final tests = snapshot.data ?? [];
@@ -205,6 +256,25 @@ class _PerformanceTestScreenState extends State<PerformanceTestScreen> {
                             '${test.description}\nAnzahl Übungen: ${test.exerciseIds.length}',
                           ),
                           isThreeLine: true,
+                          // AKTIONEN: BEARBEITEN & LÖSCHEN
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit, color: Colors.blue),
+                                tooltip: 'Bearbeiten',
+                                onPressed: () => _showTestDialog(
+                                  availableExercises,
+                                  existingTest: test,
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                tooltip: 'Löschen',
+                                onPressed: () => _confirmDeleteTest(test),
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     },

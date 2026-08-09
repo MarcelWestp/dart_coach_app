@@ -17,7 +17,8 @@ import 'player_dashboard/dashboard_exercise_item.dart';
 import 'player_dashboard/player_result_dialog.dart';
 import 'player_dashboard/dashboard_header.dart';
 
-/// Interaktives Wochen-Dashboard für Spieler mit Zielen, Avataren & Statistik-Link
+/// Interaktives Wochen-Dashboard für Spieler mit Zielen, Avataren & Statistik-Link.
+/// Speziell für Smartphones und schmale Displays optimiert.
 class PlayerDashboardWidget extends StatefulWidget {
   final AppUser user;
 
@@ -148,6 +149,9 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                   return Card(
                     color: Colors.deepOrange.shade100,
                     elevation: 3,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     margin: const EdgeInsets.only(bottom: 16),
                     child: Padding(
                       padding: const EdgeInsets.all(14.0),
@@ -178,11 +182,13 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                                 color: Colors.black87,
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              currentWeekTest.description,
-                              style: const TextStyle(color: Colors.black54),
-                            ),
+                            if (currentWeekTest.description.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                currentWeekTest.description,
+                                style: const TextStyle(color: Colors.black54),
+                              ),
+                            ],
                             const SizedBox(height: 6),
                             Text(
                               'Enthaltene Übungen: ${currentWeekTest.exerciseIds.length}',
@@ -198,7 +204,10 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.green,
                                 foregroundColor: Colors.white,
-                                minimumSize: const Size(double.infinity, 42),
+                                minimumSize: const Size(double.infinity, 44),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
                               ),
                               onPressed: () {
                                 Navigator.of(context).push(
@@ -249,7 +258,9 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                     builder: (context, planSnapshot) {
                       if (planSnapshot.connectionState ==
                           ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
+                        return const Center(
+                          child: CircularProgressIndicator(color: Colors.deepOrange),
+                        );
                       }
 
                       final plan = planSnapshot.data;
@@ -348,7 +359,7 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                             const SizedBox(height: 12),
 
                             SizedBox(
-                              height: 380,
+                              height: 440, // Leicht erhöht für Mobil-Karten
                               child: TabBarView(
                                 children: [
                                   // TAB 1: OFFENE ÜBUNGEN
@@ -367,157 +378,154 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                                             final item = openItems[index];
 
                                             return Card(
-                                              margin:
-                                                  const EdgeInsets.symmetric(
-                                                    vertical: 6,
-                                                  ),
+                                              margin: const EdgeInsets.symmetric(
+                                                vertical: 6,
+                                              ),
                                               color: item.isOverdue
                                                   ? Colors.red.shade900
-                                                        .withOpacity(0.15)
+                                                      .withOpacity(0.12)
                                                   : null,
                                               shape: RoundedRectangleBorder(
                                                 side: BorderSide(
                                                   color: item.isOverdue
                                                       ? Colors.red
-                                                      : Colors.transparent,
-                                                  width: 1.5,
+                                                      : Colors.grey.shade300,
+                                                  width: item.isOverdue ? 1.5 : 1,
                                                 ),
                                                 borderRadius:
                                                     BorderRadius.circular(12),
                                               ),
-                                              child: ListTile(
-                                                leading: CircleAvatar(
-                                                  backgroundColor:
-                                                      item.isOverdue
-                                                      ? Colors.red
-                                                      : Colors.deepOrange,
-                                                  child: Icon(
-                                                    item.isOverdue
-                                                        ? Icons
-                                                              .warning_amber_rounded
-                                                        : Icons.schedule,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                                title: Text(
-                                                  item.exercise.title,
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                subtitle: Column(
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(12.0),
+                                                child: Column(
                                                   crossAxisAlignment:
                                                       CrossAxisAlignment.start,
                                                   children: [
-                                                    Text(
-                                                      '${item.dayName} (${item.scheduledDate.day}.${item.scheduledDate.month}.)' +
-                                                          (item.isOverdue
-                                                              ? ' • VERPASST / ÜBERFÄLLIG'
-                                                              : ''),
-                                                      style: TextStyle(
-                                                        color: item.isOverdue
-                                                            ? Colors.red
-                                                            : Colors
-                                                                  .grey
-                                                                  .shade700,
-                                                        fontWeight:
+                                                    // HEADER DER ÜBUNG (Icon, Titel, Datum)
+                                                    Row(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment.start,
+                                                      children: [
+                                                        CircleAvatar(
+                                                          radius: 18,
+                                                          backgroundColor:
+                                                              item.isOverdue
+                                                                  ? Colors.red
+                                                                  : Colors.deepOrange,
+                                                          child: Icon(
                                                             item.isOverdue
-                                                            ? FontWeight.bold
-                                                            : FontWeight.normal,
-                                                      ),
+                                                                ? Icons
+                                                                    .warning_amber_rounded
+                                                                : Icons.schedule,
+                                                            color: Colors.white,
+                                                            size: 20,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(width: 12),
+                                                        Expanded(
+                                                          child: Column(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment.start,
+                                                            children: [
+                                                              Text(
+                                                                item.exercise.title,
+                                                                style: const TextStyle(
+                                                                  fontSize: 16,
+                                                                  fontWeight:
+                                                                      FontWeight.bold,
+                                                                ),
+                                                                overflow:
+                                                                    TextOverflow.ellipsis,
+                                                              ),
+                                                              const SizedBox(height: 2),
+                                                              Text(
+                                                                '${item.dayName} (${item.scheduledDate.day}.${item.scheduledDate.month}.)' +
+                                                                    (item.isOverdue
+                                                                        ? ' • VERPASST / ÜBERFÄLLIG'
+                                                                        : ''),
+                                                                style: TextStyle(
+                                                                  fontSize: 12,
+                                                                  color: item.isOverdue
+                                                                      ? Colors.red
+                                                                      : Colors.grey
+                                                                          .shade700,
+                                                                  fontWeight:
+                                                                      item.isOverdue
+                                                                          ? FontWeight.bold
+                                                                          : FontWeight.normal,
+                                                                ),
+                                                                overflow:
+                                                                    TextOverflow.ellipsis,
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ],
                                                     ),
-                                                    if (item
-                                                        .targetInfo
-                                                        .isNotEmpty) ...[
-                                                      const SizedBox(height: 2),
+
+                                                    // INHALT & HINWEISE
+                                                    if (item.targetInfo.isNotEmpty) ...[
+                                                      const SizedBox(height: 6),
                                                       Text(
                                                         item.targetInfo,
                                                         style: const TextStyle(
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          color:
-                                                              Colors.deepOrange,
+                                                          fontWeight: FontWeight.bold,
+                                                          fontSize: 13,
+                                                          color: Colors.deepOrange,
                                                         ),
                                                       ),
                                                     ],
-                                                    if (item.trainerNote !=
-                                                            null &&
-                                                        item
-                                                            .trainerNote!
-                                                            .isNotEmpty) ...[
-                                                      const SizedBox(height: 2),
+
+                                                    if (item.trainerNote != null &&
+                                                        item.trainerNote!.isNotEmpty) ...[
+                                                      const SizedBox(height: 4),
                                                       Row(
                                                         children: [
                                                           const Icon(
-                                                            Icons
-                                                                .sports_rounded,
-                                                            size: 13,
+                                                            Icons.sports_rounded,
+                                                            size: 14,
                                                             color: Colors.amber,
                                                           ),
-                                                          const SizedBox(
-                                                            width: 4,
-                                                          ),
+                                                          const SizedBox(width: 4),
                                                           Expanded(
                                                             child: Text(
                                                               'Trainer: "${item.trainerNote}"',
                                                               style: TextStyle(
                                                                 fontSize: 12,
-                                                                fontStyle:
-                                                                    FontStyle
-                                                                        .italic,
-                                                                color: Colors
-                                                                    .amber
-                                                                    .shade900,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
+                                                                fontStyle: FontStyle.italic,
+                                                                color: Colors.amber.shade900,
+                                                                fontWeight: FontWeight.w600,
                                                               ),
-                                                              maxLines: 1,
-                                                              overflow:
-                                                                  TextOverflow
-                                                                      .ellipsis,
+                                                              overflow: TextOverflow.ellipsis,
                                                             ),
                                                           ),
                                                         ],
                                                       ),
                                                     ],
-                                                    if (item
-                                                        .exercise
-                                                        .description
-                                                        .isNotEmpty) ...[
-                                                      const SizedBox(height: 2),
-                                                      Text(
-                                                        item
-                                                            .exercise
-                                                            .description,
-                                                        style: const TextStyle(
-                                                          fontSize: 12,
-                                                          color: Colors.grey,
+
+                                                    const SizedBox(height: 10),
+
+                                                    // AKTION: BUTTON FÜR EINTRAGEN (Volle Breite)
+                                                    SizedBox(
+                                                      width: double.infinity,
+                                                      child: ElevatedButton.icon(
+                                                        icon: const Icon(Icons.add_task, size: 18),
+                                                        label: const Text('Ergebnis eintragen'),
+                                                        style: ElevatedButton.styleFrom(
+                                                          backgroundColor: item.isOverdue
+                                                              ? Colors.red
+                                                              : Colors.green,
+                                                          foregroundColor: Colors.white,
+                                                          visualDensity: VisualDensity.compact,
+                                                          shape: RoundedRectangleBorder(
+                                                            borderRadius: BorderRadius.circular(8),
+                                                          ),
                                                         ),
-                                                        maxLines: 2,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
+                                                        onPressed: () =>
+                                                            _showEnterOrEditResultDialog(item),
                                                       ),
-                                                    ],
+                                                    ),
                                                   ],
-                                                ),
-                                                trailing: ElevatedButton(
-                                                  onPressed: () =>
-                                                      _showEnterOrEditResultDialog(
-                                                        item,
-                                                      ),
-                                                  style:
-                                                      ElevatedButton.styleFrom(
-                                                        backgroundColor:
-                                                            item.isOverdue
-                                                            ? Colors.red
-                                                            : Colors.green,
-                                                        foregroundColor:
-                                                            Colors.white,
-                                                      ),
-                                                  child: const Text(
-                                                    'Eintragen',
-                                                  ),
                                                 ),
                                               ),
                                             );
@@ -541,274 +549,169 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
 
                                             String resultVal = '';
                                             if (item.result != null) {
-                                              if (item.exercise.metricType ==
-                                                  MetricType.score) {
-                                                resultVal =
-                                                    '${item.result!.score} Punkte';
-                                              } else if (item
-                                                      .exercise
-                                                      .metricType ==
-                                                  MetricType.hits) {
-                                                resultVal =
-                                                    '${item.result!.hits} Treffer';
-                                              } else if (item
-                                                      .exercise
-                                                      .metricType ==
-                                                  MetricType.attempts) {
-                                                resultVal =
-                                                    '${item.result!.attempts} Versuche';
-                                              } else if (item
-                                                      .exercise
-                                                      .metricType ==
-                                                  MetricType.timeInSeconds) {
-                                                resultVal =
-                                                    '${item.result!.timeInSeconds} Sek.';
+                                              if (item.exercise.metricType == MetricType.score) {
+                                                resultVal = '${item.result!.score} Punkte';
+                                              } else if (item.exercise.metricType == MetricType.hits) {
+                                                resultVal = '${item.result!.hits} Treffer';
+                                              } else if (item.exercise.metricType == MetricType.attempts) {
+                                                resultVal = '${item.result!.attempts} Versuche';
+                                              } else if (item.exercise.metricType == MetricType.timeInSeconds) {
+                                                resultVal = '${item.result!.timeInSeconds} Sek.';
                                               }
                                             }
 
-                                            // --- DATUMS-VERGLEICH ---
-                                            final DateTime? playedAt =
-                                                item.result?.timestamp;
-                                            final String playedAtFormatted =
-                                                playedAt != null
-                                                ? DateUtilsHelper.formatTimestamp(
-                                                    playedAt,
-                                                  )
+                                            final DateTime? playedAt = item.result?.timestamp;
+                                            final String playedAtFormatted = playedAt != null
+                                                ? DateUtilsHelper.formatTimestamp(playedAt)
                                                 : 'Unbekannt';
 
-                                            // Prüfen, ob das Spieldatum vom geplanten Kalendertag abweicht
                                             bool isDifferentDay = false;
                                             if (playedAt != null) {
-                                              final playedDateMidnight =
-                                                  DateTime(
-                                                    playedAt.year,
-                                                    playedAt.month,
-                                                    playedAt.day,
-                                                  );
-                                              final scheduledDateMidnight =
-                                                  DateTime(
-                                                    item.scheduledDate.year,
-                                                    item.scheduledDate.month,
-                                                    item.scheduledDate.day,
-                                                  );
-                                              isDifferentDay =
-                                                  !playedDateMidnight
-                                                      .isAtSameMomentAs(
-                                                        scheduledDateMidnight,
-                                                      );
+                                              final playedDateMidnight = DateTime(
+                                                playedAt.year,
+                                                playedAt.month,
+                                                playedAt.day,
+                                              );
+                                              final scheduledDateMidnight = DateTime(
+                                                item.scheduledDate.year,
+                                                item.scheduledDate.month,
+                                                item.scheduledDate.day,
+                                              );
+                                              isDifferentDay = !playedDateMidnight
+                                                  .isAtSameMomentAs(scheduledDateMidnight);
                                             }
 
                                             return Card(
-                                              margin:
-                                                  const EdgeInsets.symmetric(
-                                                    vertical: 6,
-                                                  ),
-                                              child: ListTile(
-                                                leading: const CircleAvatar(
-                                                  backgroundColor: Colors.green,
-                                                  child: Icon(
-                                                    Icons.check,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                                title: Text(
-                                                  item.exercise.title,
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                subtitle: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
+                                              margin: const EdgeInsets.symmetric(
+                                                vertical: 6,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(12.0),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
                                                   children: [
-                                                    const SizedBox(height: 2),
-                                                    // Ergebnis-Anzeige
-                                                    Text(
-                                                      'Ergebnis: $resultVal',
-                                                      style: const TextStyle(
-                                                        color: Colors.green,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        fontSize: 14,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 4),
-
-                                                    // Geplanter Tag im Wochenplan
+                                                    // HEADER (Grüner Haken, Titel, Ergebnis)
                                                     Row(
                                                       children: [
-                                                        const Icon(
-                                                          Icons.calendar_today,
-                                                          size: 12,
-                                                          color: Colors.grey,
-                                                        ),
-                                                        const SizedBox(
-                                                          width: 4,
-                                                        ),
-                                                        Text(
-                                                          'Im Plan für: ${item.dayName} (${item.scheduledDate.day}.${item.scheduledDate.month}.)',
-                                                          style: TextStyle(
-                                                            fontSize: 12,
-                                                            color: Colors
-                                                                .grey
-                                                                .shade800,
+                                                        const CircleAvatar(
+                                                          radius: 16,
+                                                          backgroundColor: Colors.green,
+                                                          child: Icon(
+                                                            Icons.check,
+                                                            color: Colors.white,
+                                                            size: 18,
                                                           ),
                                                         ),
-                                                      ],
-                                                    ),
-
-                                                    // Tatsächliches Eingabedatum (Timestamp)
-                                                    Row(
-                                                      children: [
-                                                        Icon(
-                                                          Icons
-                                                              .access_time_rounded,
-                                                          size: 12,
-                                                          color: isDifferentDay
-                                                              ? Colors
-                                                                    .deepOrange
-                                                              : Colors.grey,
-                                                        ),
-                                                        const SizedBox(
-                                                          width: 4,
-                                                        ),
+                                                        const SizedBox(width: 10),
                                                         Expanded(
                                                           child: Text(
-                                                            'Eingetragen: $playedAtFormatted' +
-                                                                (isDifferentDay
-                                                                    ? ' (Abweichender Tag)'
-                                                                    : ''),
-                                                            style: TextStyle(
-                                                              fontSize: 12,
-                                                              fontWeight:
-                                                                  isDifferentDay
-                                                                  ? FontWeight
-                                                                        .w600
-                                                                  : FontWeight
-                                                                        .normal,
-                                                              color:
-                                                                  isDifferentDay
-                                                                  ? Colors
-                                                                        .deepOrange
-                                                                        .shade800
-                                                                  : Colors
-                                                                        .grey
-                                                                        .shade700,
+                                                            item.exercise.title,
+                                                            style: const TextStyle(
+                                                              fontSize: 16,
+                                                              fontWeight: FontWeight.bold,
                                                             ),
+                                                            overflow: TextOverflow.ellipsis,
+                                                          ),
+                                                        ),
+                                                        Text(
+                                                          resultVal,
+                                                          style: const TextStyle(
+                                                            color: Colors.green,
+                                                            fontWeight: FontWeight.bold,
+                                                            fontSize: 15,
                                                           ),
                                                         ),
                                                       ],
                                                     ),
 
-                                                    // Vorgabe-Informationen (falls vorhanden)
-                                                    if (item
-                                                        .targetInfo
-                                                        .isNotEmpty) ...[
-                                                      const SizedBox(height: 2),
-                                                      Text(
-                                                        item.targetInfo,
-                                                        style: const TextStyle(
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          fontSize: 12,
-                                                          color:
-                                                              Colors.deepOrange,
-                                                        ),
-                                                      ),
-                                                    ],
+                                                    const SizedBox(height: 6),
 
-                                                    // Trainer-Hinweis (falls vorhanden)
-                                                    if (item.trainerNote !=
-                                                            null &&
-                                                        item
-                                                            .trainerNote!
-                                                            .isNotEmpty) ...[
-                                                      const SizedBox(height: 2),
-                                                      Row(
-                                                        children: [
-                                                          const Icon(
-                                                            Icons
-                                                                .sports_rounded,
-                                                            size: 13,
-                                                            color: Colors.amber,
-                                                          ),
-                                                          const SizedBox(
-                                                            width: 4,
-                                                          ),
-                                                          Expanded(
-                                                            child: Text(
-                                                              'Trainer: "${item.trainerNote}"',
+                                                    // DETAILS (Geplant vs. Eingetragen)
+                                                    Text(
+                                                      'Geplant: ${item.dayName} (${item.scheduledDate.day}.${item.scheduledDate.month}.)',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.grey.shade700,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      'Eingetragen: $playedAtFormatted' +
+                                                          (isDifferentDay ? ' (Abweichend)' : ''),
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: isDifferentDay
+                                                            ? Colors.deepOrange.shade800
+                                                            : Colors.grey.shade700,
+                                                        fontWeight: isDifferentDay
+                                                            ? FontWeight.w600
+                                                            : FontWeight.normal,
+                                                      ),
+                                                    ),
+
+                                                    const Divider(height: 16),
+
+                                                    // BUTTON-LEISTE FÜR MOBIL (Historie & Korrigieren)
+                                                    Row(
+                                                      children: [
+                                                        // Button 1: Historie
+                                                        Expanded(
+                                                          child: OutlinedButton.icon(
+                                                            icon: const Icon(
+                                                              Icons.show_chart,
+                                                              size: 16,
+                                                              color: Colors.blue,
+                                                            ),
+                                                            label: const Text(
+                                                              'Historie',
                                                               style: TextStyle(
                                                                 fontSize: 12,
-                                                                fontStyle:
-                                                                    FontStyle
-                                                                        .italic,
-                                                                color: Colors
-                                                                    .amber
-                                                                    .shade900,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
+                                                                color: Colors.blue,
                                                               ),
-                                                              maxLines: 1,
-                                                              overflow:
-                                                                  TextOverflow
-                                                                      .ellipsis,
                                                             ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ],
-                                                  ],
-                                                ),
-                                                trailing: Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    IconButton(
-                                                      icon: const Icon(
-                                                        Icons.show_chart,
-                                                        color: Colors.blue,
-                                                      ),
-                                                      tooltip:
-                                                          'Historie anzeigen',
-                                                      onPressed: () {
-                                                        Navigator.of(
-                                                          context,
-                                                        ).push(
-                                                          MaterialPageRoute(
-                                                            builder: (_) =>
-                                                                ExerciseHistoryScreen(
-                                                                  exercise: item
-                                                                      .exercise,
-                                                                  playerId:
-                                                                      widget
-                                                                          .user
-                                                                          .uid,
+                                                            style: OutlinedButton.styleFrom(
+                                                              side: const BorderSide(color: Colors.blue),
+                                                              padding: const EdgeInsets.symmetric(vertical: 6),
+                                                              visualDensity: VisualDensity.compact,
+                                                            ),
+                                                            onPressed: () {
+                                                              Navigator.of(context).push(
+                                                                MaterialPageRoute(
+                                                                  builder: (_) => ExerciseHistoryScreen(
+                                                                    exercise: item.exercise,
+                                                                    playerId: widget.user.uid,
+                                                                  ),
                                                                 ),
+                                                              );
+                                                            },
                                                           ),
-                                                        );
-                                                      },
-                                                    ),
-                                                    ElevatedButton.icon(
-                                                      icon: const Icon(
-                                                        Icons.edit,
-                                                        size: 14,
-                                                      ),
-                                                      label: const Text(
-                                                        'Korrigieren',
-                                                      ),
-                                                      style:
-                                                          ElevatedButton.styleFrom(
-                                                            backgroundColor:
-                                                                Colors.orange,
-                                                            foregroundColor:
-                                                                Colors.white,
+                                                        ),
+                                                        const SizedBox(width: 8),
+
+                                                        // Button 2: Korrigieren
+                                                        Expanded(
+                                                          child: ElevatedButton.icon(
+                                                            icon: const Icon(
+                                                              Icons.edit,
+                                                              size: 16,
+                                                            ),
+                                                            label: const Text(
+                                                              'Korrigieren',
+                                                              style: TextStyle(fontSize: 12),
+                                                            ),
+                                                            style: ElevatedButton.styleFrom(
+                                                              backgroundColor: Colors.orange,
+                                                              foregroundColor: Colors.white,
+                                                              padding: const EdgeInsets.symmetric(vertical: 6),
+                                                              visualDensity: VisualDensity.compact,
+                                                            ),
+                                                            onPressed: () =>
+                                                                _showEnterOrEditResultDialog(item),
                                                           ),
-                                                      onPressed: () =>
-                                                          _showEnterOrEditResultDialog(
-                                                            item,
-                                                          ),
+                                                        ),
+                                                      ],
                                                     ),
                                                   ],
                                                 ),

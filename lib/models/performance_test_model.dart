@@ -14,6 +14,21 @@ class PerformanceTest {
     required this.exerciseIds,
   });
 
+  /// Erstellt eine Kopie des Objekts mit optional geänderten Feldern (für einfache Bearbeitung)
+  PerformanceTest copyWith({
+    String? id,
+    String? title,
+    String? description,
+    List<String>? exerciseIds,
+  }) {
+    return PerformanceTest(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      exerciseIds: exerciseIds ?? this.exerciseIds,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'title': title,
@@ -72,7 +87,7 @@ class AssignedTest {
   }
 }
 
-/// Absolviertes Ergebnis eines Leistungstests mit allen Einzelergebnissen je Übung
+/// Absolviertes Ergebnis eines Leistungstests mit allen Einzelergebnissen je Übung & Notiz
 class PerformanceTestResult {
   final String id;
   final String playerId;
@@ -81,6 +96,7 @@ class PerformanceTestResult {
   final Map<String, int> exerciseScores; // Key: exerciseId, Value: Erreichte Punkte
   final int totalScore;                  // Automatisch berechnete Gesamtsumme
   final int durationInSeconds;           // Stoppuhr-Dauer des gesamten Tests
+  final String? note;                    // NEU: Gesamt-Notiz zum Test
   final DateTime timestamp;
 
   PerformanceTestResult({
@@ -91,8 +107,34 @@ class PerformanceTestResult {
     required this.exerciseScores,
     required this.totalScore,
     required this.durationInSeconds,
+    this.note,
     required this.timestamp,
   });
+
+  /// Erstellt eine Kopie des Objekts für spätere Notiz-Bearbeitung oder Korrekturen
+  PerformanceTestResult copyWith({
+    String? id,
+    String? playerId,
+    String? testId,
+    String? testTitle,
+    Map<String, int>? exerciseScores,
+    int? totalScore,
+    int? durationInSeconds,
+    String? note,
+    DateTime? timestamp,
+  }) {
+    return PerformanceTestResult(
+      id: id ?? this.id,
+      playerId: playerId ?? this.playerId,
+      testId: testId ?? this.testId,
+      testTitle: testTitle ?? this.testTitle,
+      exerciseScores: exerciseScores ?? this.exerciseScores,
+      totalScore: totalScore ?? this.totalScore,
+      durationInSeconds: durationInSeconds ?? this.durationInSeconds,
+      note: note ?? this.note,
+      timestamp: timestamp ?? this.timestamp,
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -102,6 +144,7 @@ class PerformanceTestResult {
       'exerciseScores': exerciseScores,
       'totalScore': totalScore,
       'durationInSeconds': durationInSeconds,
+      'note': note ?? '', // NEU: Notiz speichern
       'timestamp': Timestamp.fromDate(timestamp),
     };
   }
@@ -120,6 +163,7 @@ class PerformanceTestResult {
       exerciseScores: parsedScores,
       totalScore: map['totalScore'] ?? 0,
       durationInSeconds: map['durationInSeconds'] ?? 0,
+      note: map['note'], // NEU: Notiz auslesen
       timestamp: map['timestamp'] != null
           ? (map['timestamp'] as Timestamp).toDate()
           : DateTime.now(),
