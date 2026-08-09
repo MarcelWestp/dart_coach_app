@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../models/exercise_model.dart';
 import '../models/result_model.dart';
 import '../models/weekly_plan_model.dart';
@@ -47,6 +48,7 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
     'Freitag',
     'Samstag',
     'Sonntag',
+    'Sonntag',
   ];
 
   @override
@@ -57,6 +59,11 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
   }
 
   void _updateWeekAndYear() {
+    int w =
+        ((_selectedDate.difference(DateTime(_selectedDate.year, 1, 1)).inDays +
+                    1) /
+                7)
+            .ceil();
     int w =
         ((_selectedDate.difference(DateTime(_selectedDate.year, 1, 1)).inDays +
                     1) /
@@ -146,8 +153,10 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Wochen-Trainingsplan')),
+      appBar: AppBar(title: const Text('Wochen-Trainingsplan')),
       body: Column(
         children: [
+          // KALENDERWOCHEN NAVIGATION
           Container(
             color: Colors.deepOrange.shade50,
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -190,6 +199,8 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                     final assignedTest = assignedTestSnapshot.data;
                     final PerformanceTest? currentWeekTest =
                         assignedTest != null
+                    final PerformanceTest? currentWeekTest =
+                        assignedTest != null
                         ? allTests.firstWhere(
                             (t) => t.id == assignedTest.testId,
                             orElse: () => PerformanceTest(
@@ -210,6 +221,9 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                           stream: _resultService.getResultsForPlayer(
                             widget.targetPlayerId,
                           ),
+                          stream: _resultService.getResultsForPlayer(
+                            widget.targetPlayerId,
+                          ),
                           builder: (context, resultSnapshot) {
                             final allResults = resultSnapshot.data ?? [];
 
@@ -225,8 +239,12 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                   return const Center(
                                     child: CircularProgressIndicator(),
                                   );
+                                    child: CircularProgressIndicator(),
+                                  );
                                 }
 
+                                final plan =
+                                    planSnapshot.data ??
                                 final plan =
                                     planSnapshot.data ??
                                     TrainingPlan(
@@ -264,9 +282,15 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                               mainAxisAlignment:
                                                   MainAxisAlignment
                                                       .spaceBetween,
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
                                               children: [
                                                 const Row(
                                                   children: [
+                                                    Icon(
+                                                      Icons.assignment,
+                                                      color: Colors.deepOrange,
+                                                    ),
                                                     Icon(
                                                       Icons.assignment,
                                                       color: Colors.deepOrange,
@@ -280,12 +304,18 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                             FontWeight.bold,
                                                         color:
                                                             Colors.deepOrange,
+                                                        color:
+                                                            Colors.deepOrange,
                                                       ),
                                                     ),
                                                   ],
                                                 ),
                                                 if (widget.isTrainer)
                                                   ElevatedButton.icon(
+                                                    icon: const Icon(
+                                                      Icons.edit,
+                                                      size: 14,
+                                                    ),
                                                     icon: const Icon(
                                                       Icons.edit,
                                                       size: 14,
@@ -302,8 +332,16 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                           foregroundColor:
                                                               Colors.white,
                                                         ),
+                                                          backgroundColor:
+                                                              Colors.deepOrange,
+                                                          foregroundColor:
+                                                              Colors.white,
+                                                        ),
                                                     onPressed: () =>
                                                         _showAssignTestDialog(
+                                                          allTests,
+                                                          plan.trainerId,
+                                                        ),
                                                           allTests,
                                                           plan.trainerId,
                                                         ),
@@ -325,6 +363,8 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                 style: TextStyle(
                                                   color: Colors.grey.shade800,
                                                 ),
+                                                  color: Colors.grey.shade800,
+                                                ),
                                               ),
                                               const SizedBox(height: 12),
                                               if (!widget.isTrainer)
@@ -332,7 +372,23 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                   icon: const Icon(
                                                     Icons.play_arrow,
                                                   ),
+                                                  icon: const Icon(
+                                                    Icons.play_arrow,
+                                                  ),
                                                   label: const Text(
+                                                    'Leistungstest starten',
+                                                  ),
+                                                  style:
+                                                      ElevatedButton.styleFrom(
+                                                        backgroundColor:
+                                                            Colors.green,
+                                                        foregroundColor:
+                                                            Colors.white,
+                                                        minimumSize: const Size(
+                                                          double.infinity,
+                                                          40,
+                                                        ),
+                                                      ),
                                                     'Leistungstest starten',
                                                   ),
                                                   style:
@@ -351,6 +407,11 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                       MaterialPageRoute(
                                                         builder: (_) =>
                                                             TakeTestScreen(
+                                                              test:
+                                                                  currentWeekTest,
+                                                              playerId: widget
+                                                                  .targetPlayerId,
+                                                            ),
                                                               test:
                                                                   currentWeekTest,
                                                               playerId: widget
@@ -388,6 +449,8 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                         margin: const EdgeInsets.symmetric(
                                           vertical: 6,
                                         ),
+                                          vertical: 6,
+                                        ),
                                         elevation: 2,
                                         child: Padding(
                                           padding: const EdgeInsets.all(12.0),
@@ -404,6 +467,8 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                     dayName,
                                                     style: const TextStyle(
                                                       fontSize: 18,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                       fontWeight:
                                                           FontWeight.bold,
                                                       color: Colors.deepOrange,
@@ -424,6 +489,10 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                             dayName,
                                                             exercises,
                                                           ),
+                                                            plan,
+                                                            dayName,
+                                                            exercises,
+                                                          ),
                                                     ),
                                                 ],
                                               ),
@@ -435,10 +504,14 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                   padding: EdgeInsets.symmetric(
                                                     vertical: 8.0,
                                                   ),
+                                                    vertical: 8.0,
+                                                  ),
                                                   child: Text(
                                                     'Keine Übungen eingeplant',
                                                     style: TextStyle(
                                                       color: Colors.grey,
+                                                      fontStyle:
+                                                          FontStyle.italic,
                                                       fontStyle:
                                                           FontStyle.italic,
                                                     ),
@@ -479,7 +552,10 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
 
                                                   final ExerciseResult?
                                                   existingResult =
+                                                  existingResult =
                                                       existingResults.isNotEmpty
+                                                      ? existingResults.first
+                                                      : null;
                                                       ? existingResults.first
                                                       : null;
 
@@ -809,3 +885,4 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
     );
   }
 }
+

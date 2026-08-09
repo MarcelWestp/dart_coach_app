@@ -18,8 +18,9 @@ import 'screens/login_screen.dart'; // Verbindet deinen LoginScreen!
 import 'screens/trainer_main_screen.dart';
 import 'screens/player_main_screen.dart';
 
-/// Globaler Notifier für den aktuellen ThemeMode
-final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier(ThemeMode.system);
+/// Globaler Notifier für den ThemeMode (System, Light, Dark)
+final ValueNotifier<ThemeMode> themeModeNotifier =
+    ValueNotifier<ThemeMode>(ThemeMode.system);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,6 +47,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ValueListenableBuilder hört auf Änderungen am ThemeMode
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeModeNotifier,
       builder: (context, currentMode, child) {

@@ -23,11 +23,20 @@ class DefaultFirebaseOptions {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        return ios;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for ios - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.macOS:
-        return macos;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for macos - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.windows:
-        return windows;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for windows - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -46,6 +55,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '589387746591',
     projectId: 'dart-coach-app',
     authDomain: 'dart-coach-app.firebaseapp.com',
+    databaseURL: 'https://dart-coach-app-default-rtdb.europe-west1.firebasedatabase.app',
     storageBucket: 'dart-coach-app.firebasestorage.app',
     measurementId: 'G-J3701GSY5Y',
   );
@@ -55,34 +65,7 @@ class DefaultFirebaseOptions {
     appId: '1:589387746591:android:b9c9463f4c4227cac3b42a',
     messagingSenderId: '589387746591',
     projectId: 'dart-coach-app',
+    databaseURL: 'https://dart-coach-app-default-rtdb.europe-west1.firebasedatabase.app',
     storageBucket: 'dart-coach-app.firebasestorage.app',
-  );
-
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAA--THujS83dzq4LlIhgYv0MrmIMWLPlI',
-    appId: '1:589387746591:ios:3af09e4f42b161b1c3b42a',
-    messagingSenderId: '589387746591',
-    projectId: 'dart-coach-app',
-    storageBucket: 'dart-coach-app.firebasestorage.app',
-    iosBundleId: 'com.example.dartCoachApp',
-  );
-
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyAA--THujS83dzq4LlIhgYv0MrmIMWLPlI',
-    appId: '1:589387746591:ios:3af09e4f42b161b1c3b42a',
-    messagingSenderId: '589387746591',
-    projectId: 'dart-coach-app',
-    storageBucket: 'dart-coach-app.firebasestorage.app',
-    iosBundleId: 'com.example.dartCoachApp',
-  );
-
-  static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyCRbuOspufVzLis-eodFuoZKy6c9D3Iv_o',
-    appId: '1:589387746591:web:c91923083a5bd0a6c3b42a',
-    messagingSenderId: '589387746591',
-    projectId: 'dart-coach-app',
-    authDomain: 'dart-coach-app.firebaseapp.com',
-    storageBucket: 'dart-coach-app.firebasestorage.app',
-    measurementId: 'G-ML1P1BXWNK',
   );
 }

@@ -3,7 +3,6 @@ import '../models/user_model.dart';
 import '../services/user_service.dart';
 import '../screens/weekly_plan_screen.dart';
 import '../screens/player_detail_screen.dart';
-import '../screens/player_stats_overview_screen.dart';
 import 'user_avatar_widget.dart'; // NEU: Import für das universelle Avatar-Widget
 
 /// Dashboard für Trainer mit persönlicher Kaderverwaltung
@@ -184,33 +183,12 @@ class TrainerDashboardWidget extends StatelessWidget {
                         children: [
                           // Trends & Statistik
                           IconButton(
-                            icon: const Icon(
-                              Icons.show_chart,
-                              color: Colors.blue,
-                            ),
+                            icon: const Icon(Icons.show_chart, color: Colors.blue),
                             tooltip: 'Übungs-Trends & Statistik',
                             onPressed: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (_) =>
-                                      PlayerDetailScreen(player: player),
-                                ),
-                              );
-                            },
-                          ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.bar_chart,
-                              color: Colors.purple,
-                            ),
-                            tooltip: 'Gesamte Statistik anzeigen',
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => PlayerStatsOverviewScreen(
-                                    playerId: player.uid,
-                                    playerName: player.name,
-                                  ),
+                                  builder: (_) => PlayerDetailScreen(player: player),
                                 ),
                               );
                             },
@@ -236,15 +214,12 @@ class TrainerDashboardWidget extends StatelessWidget {
                           ),
                           // Entfernen
                           IconButton(
-                            icon: const Icon(
-                              Icons.remove_circle_outline,
-                              color: Colors.red,
-                            ),
+                            icon: const Icon(Icons.remove_circle_outline,
+                                color: Colors.red),
                             tooltip: 'Aus Kader entfernen',
                             onPressed: () async {
-                              await userService.removePlayerFromTrainer(
-                                player.uid,
-                              );
+                              await userService
+                                  .removePlayerFromTrainer(player.uid);
                             },
                           ),
                         ],

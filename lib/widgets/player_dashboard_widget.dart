@@ -4,11 +4,11 @@ import '../models/user_model.dart';
 import '../models/exercise_model.dart';
 import '../models/result_model.dart';
 import '../models/weekly_plan_model.dart';
-import '../models/performance_test_model.dart';
+import '../models/performance_test_model.dart'; // NEU: Modell-Import
 import '../services/exercise_service.dart';
 import '../services/plan_service.dart';
 import '../services/result_service.dart';
-import '../services/test_service.dart';
+import '../services/test_service.dart'; // NEU: Service-Import
 import '../screens/exercise_history_screen.dart';
 import '../screens/take_test_screen.dart';
 
@@ -17,7 +17,7 @@ import 'player_dashboard/dashboard_exercise_item.dart';
 import 'player_dashboard/player_result_dialog.dart';
 import 'player_dashboard/dashboard_header.dart';
 
-/// Interaktives Wochen-Dashboard für Spieler mit Zielen, Avataren & Statistik-Link
+/// Interaktives Wochen-Dashboard für Spieler inklusive Leistungstest-Kachel
 class PlayerDashboardWidget extends StatefulWidget {
   final AppUser user;
 
@@ -31,7 +31,7 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
   final PlanService _planService = PlanService();
   final ExerciseService _exerciseService = ExerciseService();
   final ResultService _resultService = ResultService();
-  final TestService _testService = TestService();
+  final TestService _testService = TestService(); // NEU: TestService Instanz
 
   late DateTime _selectedDate;
   late int _currentWeekNumber;
@@ -119,7 +119,7 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
           ),
           const SizedBox(height: 16),
 
-          // KACHEL FÜR WOCHEN-LEISTUNGSTEST
+          // NEU: KACHEL FÜR DEN ZUGEWIESENEN LEISTUNGSTEST DER WOCHE
           StreamBuilder<List<PerformanceTest>>(
             stream: _testService.getTestTemplates(),
             builder: (context, testTemplatesSnapshot) {
@@ -229,7 +229,7 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
             },
           ),
 
-          // ÜBUNGEN & GESPIELTE ERGEBNISSE
+          // DATEN LADEN: ÜBUNGEN, ERGEBNISSE & PLAN
           StreamBuilder<List<Exercise>>(
             stream: _exerciseService.getExercises(),
             builder: (context, exerciseSnapshot) {
@@ -273,9 +273,9 @@ class _PlayerDashboardWidgetState extends State<PlayerDashboardWidget> {
                           for (var scheduledEx
                               in daySchedule.scheduledExercises) {
                             final exercise = exercises.firstWhere(
-                              (e) => e.id == scheduledEx.exerciseId,
+                              (e) => e.id == exId,
                               orElse: () => Exercise(
-                                id: scheduledEx.exerciseId,
+                                id: exId,
                                 title: 'Unbekannte Übung',
                                 description: '',
                                 metricType: MetricType.score,

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
-import '../services/theme_service.dart';
 import '../widgets/user_avatar_widget.dart';
 import '../main.dart'; // Import für themeModeNotifier
 

@@ -39,49 +39,37 @@ class ScheduledExercise {
 
 /// Tagesplan eines Spielers mit einer Liste zugewiesener ScheduledExercises
 class DailySchedule {
-  final String dayOfWeek;
-  final List<ScheduledExercise> scheduledExercises;
+  final String dayOfWeek; // z.B. "Montag", "Dienstag"
+  final List<String> exerciseIds; // IDs der zugewiesenen Übungen
 
   DailySchedule({
     required this.dayOfWeek,
-    required this.scheduledExercises,
+    required this.exerciseIds,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'dayOfWeek': dayOfWeek,
-      'scheduledExercises': scheduledExercises.map((e) => e.toMap()).toList(),
+      'exerciseIds': exerciseIds,
     };
   }
 
   factory DailySchedule.fromMap(Map<String, dynamic> map) {
-    // Abwärtskompatibilität: Falls alte Daten noch als 'exerciseIds' (List<String>) gespeichert waren
-    List<ScheduledExercise> items = [];
-    if (map['scheduledExercises'] != null) {
-      items = (map['scheduledExercises'] as List)
-          .map((item) => ScheduledExercise.fromMap(Map<String, dynamic>.from(item)))
-          .toList();
-    } else if (map['exerciseIds'] != null) {
-      items = (map['exerciseIds'] as List)
-          .map((id) => ScheduledExercise(exerciseId: id.toString()))
-          .toList();
-    }
-
     return DailySchedule(
       dayOfWeek: map['dayOfWeek'] ?? '',
-      scheduledExercises: items,
+      exerciseIds: List<String>.from(map['exerciseIds'] ?? []),
     );
   }
 }
 
-/// Vollständiger Wochen-Trainingsplan
+/// Modell für einen Wochen-Trainingsplan (inkl. Kalenderwoche und Jahr)
 class TrainingPlan {
   final String id;
   final String title;
-  final String playerId;
-  final String trainerId;
-  final int year;
-  final int weekNumber;
+  final String playerId;   // Für welchen Spieler?
+  final String trainerId;  // Wer hat den Plan erstellt?
+  final int year;          // z. B. 2026
+  final int weekNumber;    // z. B. Kalenderwoche 32
   final List<DailySchedule> days;
 
   TrainingPlan({
@@ -113,11 +101,10 @@ class TrainingPlan {
       trainerId: map['trainerId'] ?? '',
       year: map['year'] ?? DateTime.now().year,
       weekNumber: map['weekNumber'] ?? 1,
-      days: map['days'] != null
-          ? (map['days'] as List)
-              .map((d) => DailySchedule.fromMap(Map<String, dynamic>.from(d)))
-              .toList()
-          : [],
+      days: (map['days'] as List<dynamic>?)
+              ?.map((d) => DailySchedule.fromMap(d))
+              .toList() ??
+          [],
     );
   }
 }
