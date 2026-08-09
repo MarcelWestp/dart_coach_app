@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import '../models/exercise_model.dart';
+import '../models/weekly_plan_model.dart'; // Für TargetType
 import '../models/tag_model.dart';
 import '../services/exercise_service.dart';
 import '../services/tag_service.dart';
 import 'tag_management_screen.dart';
 
-/// Verwaltung der Übungen inklusive Tag-Zuweisung und Button zur Tag-Verwaltung
+/// Verwaltung der Übungen inklusive Standard-Dauer/Durchläufen & Tag-Zuweisung.
 class ExerciseListScreen extends StatefulWidget {
   const ExerciseListScreen({super.key});
 
@@ -17,10 +18,19 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
   final ExerciseService _exerciseService = ExerciseService();
   final TagService _tagService = TagService();
 
+  /// Dialog zum Erstellen oder Bearbeiten einer Übung
   void _showExerciseDialog({Exercise? exercise}) {
     final titleController = TextEditingController(text: exercise?.title ?? '');
-    final descController = TextEditingController(text: exercise?.description ?? '');
+    final descController = TextEditingController(
+      text: exercise?.description ?? '',
+    );
+    final targetValueController = TextEditingController(
+      text: exercise?.defaultTargetValue ?? '',
+    );
+
     MetricType selectedMetric = exercise?.metricType ?? MetricType.score;
+    TargetType selectedTargetType =
+        exercise?.defaultTargetType ?? TargetType.none;
     List<String> selectedTagIds = List.from(exercise?.tagIds ?? []);
 
     final isEditing = exercise != null;
@@ -31,7 +41,9 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text(isEditing ? 'Übung bearbeiten' : 'Neue Übung anlegen'),
+              title: Text(
+                isEditing ? 'Übung bearbeiten' : 'Neue Übung anlegen',
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -54,6 +66,8 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
+
+                    // ERFASSUNGSTYP
                     DropdownButtonFormField<MetricType>(
                       value: selectedMetric,
                       decoration: const InputDecoration(
@@ -66,8 +80,12 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                           child: Text('Punkte / Score'),
                         ),
                         DropdownMenuItem(
-                          value: MetricType.hitsAndAttempts,
-                          child: Text('Treffer / Versuche'),
+                          value: MetricType.hits,
+                          child: Text('Treffer (Anzahl)'),
+                        ),
+                        DropdownMenuItem(
+                          value: MetricType.attempts,
+                          child: Text('Versuche (Anzahl)'),
                         ),
                         DropdownMenuItem(
                           value: MetricType.timeInSeconds,
@@ -75,14 +93,74 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                         ),
                       ],
                       onChanged: (val) {
-                        if (val != null) setDialogState(() => selectedMetric = val);
+                        if (val != null)
+                          setDialogState(() => selectedMetric = val);
                       },
                     ),
                     const SizedBox(height: 16),
-                    const Text('Tags zuweisen:', style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
 
-                    // STREAM DER VERFÜGBAREN TAGS
+                    // OPTIONALE VORGABE (DAUER ODER DURCHLÄUFE)
+                    const Text(
+                      'Standard-Vorgabe (Optional):',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<TargetType>(
+                            value: selectedTargetType,
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              border: OutlineInputBorder(),
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: TargetType.none,
+                                child: Text('Keine Vorgabe'),
+                              ),
+                              DropdownMenuItem(
+                                value: TargetType.duration,
+                                child: Text('⏱️ Dauer'),
+                              ),
+                              DropdownMenuItem(
+                                value: TargetType.reps,
+                                child: Text('🔁 Durchläufe'),
+                              ),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) {
+                                setDialogState(() => selectedTargetType = val);
+                              }
+                            },
+                          ),
+                        ),
+                        if (selectedTargetType != TargetType.none) ...[
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: targetValueController,
+                              decoration: InputDecoration(
+                                hintText:
+                                    selectedTargetType == TargetType.duration
+                                    ? 'z. B. 15 Min'
+                                    : 'z. B. 10 Serien',
+                                isDense: true,
+                                border: const OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // TAGS ZUWEISEN
+                    const Text(
+                      'Tags zuweisen:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
                     StreamBuilder<List<ExerciseTag>>(
                       stream: _tagService.getTags(),
                       builder: (context, snapshot) {
@@ -139,6 +217,8 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                       description: descController.text.trim(),
                       metricType: selectedMetric,
                       tagIds: selectedTagIds,
+                      defaultTargetType: selectedTargetType,
+                      defaultTargetValue: targetValueController.text.trim(),
                     );
 
                     if (isEditing) {
@@ -165,102 +245,181 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Übungen verwalten'),
-        actions: [
-          // BUTTON ZUR TAG-VERWALTUNG
-          IconButton(
-            icon: const Icon(Icons.sell_outlined),
-            tooltip: 'Tags verwalten',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const TagManagementScreen()),
-              );
-            },
+    return Column(
+      children: [
+        // AKTIONSLEISTE OBEN
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          color: Theme.of(context).cardColor,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              OutlinedButton.icon(
+                icon: const Icon(Icons.sell_outlined, size: 18),
+                label: const Text('Tags verwalten'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.deepOrange,
+                  side: const BorderSide(color: Colors.deepOrange),
+                ),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const TagManagementScreen(),
+                    ),
+                  );
+                },
+              ),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Neue Übung'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepOrange,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => _showExerciseDialog(),
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Neue Übung anlegen',
-            onPressed: () => _showExerciseDialog(),
-          ),
-        ],
-      ),
-      body: StreamBuilder<List<ExerciseTag>>(
-        stream: _tagService.getTags(),
-        builder: (context, tagSnapshot) {
-          final tags = tagSnapshot.data ?? [];
+        ),
 
-          return StreamBuilder<List<Exercise>>(
-            stream: _exerciseService.getExercises(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
+        const Divider(height: 1),
 
-              final exercises = snapshot.data ?? [];
+        // LISTE DER ÜBUNGEN
+        Expanded(
+          child: StreamBuilder<List<ExerciseTag>>(
+            stream: _tagService.getTags(),
+            builder: (context, tagSnapshot) {
+              final tags = tagSnapshot.data ?? [];
 
-              if (exercises.isEmpty) {
-                return const Center(
-                  child: Text('Noch keine Übungen angelegt.'),
-                );
-              }
+              return StreamBuilder<List<Exercise>>(
+                stream: _exerciseService.getExercises(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-              return ListView.builder(
-                padding: const EdgeInsets.all(12),
-                itemCount: exercises.length,
-                itemBuilder: (context, index) {
-                  final ex = exercises[index];
-                  final assignedTags =
-                      tags.where((t) => ex.tagIds.contains(t.id)).toList();
+                  final exercises = snapshot.data ?? [];
 
-                  return Card(
-                    elevation: 2,
-                    margin: const EdgeInsets.symmetric(vertical: 6),
-                    child: ListTile(
-                      title: Text(ex.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(ex.description),
-                          const SizedBox(height: 4),
-                          if (assignedTags.isNotEmpty)
-                            Wrap(
-                              spacing: 4,
-                              children: assignedTags.map((t) {
-                                return Chip(
-                                  label: Text(t.name, style: const TextStyle(fontSize: 10, color: Colors.white)),
-                                  backgroundColor: t.color,
+                  if (exercises.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'Noch keine Übungen angelegt.\nKlicke oben auf "Neue Übung", um zu starten.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: exercises.length,
+                    itemBuilder: (context, index) {
+                      final ex = exercises[index];
+                      final assignedTags = tags
+                          .where((t) => ex.tagIds.contains(t.id))
+                          .toList();
+
+                      // Vorgabe-Text aufbereiten
+                      String targetInfo = '';
+                      if (ex.defaultTargetType == TargetType.duration &&
+                          ex.defaultTargetValue.isNotEmpty) {
+                        targetInfo = '⏱️ Standard: ${ex.defaultTargetValue}';
+                      } else if (ex.defaultTargetType == TargetType.reps &&
+                          ex.defaultTargetValue.isNotEmpty) {
+                        targetInfo = '🔁 Standard: ${ex.defaultTargetValue}';
+                      }
+
+                      return Card(
+                        elevation: 2,
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        child: ListTile(
+                          title: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  ex.title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              if (targetInfo.isNotEmpty)
+                                Chip(
+                                  label: Text(
+                                    targetInfo,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.deepOrange,
+                                    ),
+                                  ),
+                                  backgroundColor: Colors.deepOrange.shade50,
                                   visualDensity: VisualDensity.compact,
                                   padding: EdgeInsets.zero,
-                                );
-                              }).toList(),
-                            ),
-                        ],
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.blue),
-                            onPressed: () => _showExerciseDialog(exercise: ex),
+                                ),
+                            ],
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () async {
-                              await _exerciseService.deleteExercise(ex.id);
-                            },
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (ex.description.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(ex.description),
+                              ],
+                              const SizedBox(height: 4),
+                              if (assignedTags.isNotEmpty)
+                                Wrap(
+                                  spacing: 4,
+                                  children: assignedTags.map((t) {
+                                    return Chip(
+                                      label: Text(
+                                        t.name,
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      backgroundColor: t.color,
+                                      visualDensity: VisualDensity.compact,
+                                      padding: EdgeInsets.zero,
+                                    );
+                                  }).toList(),
+                                ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.edit,
+                                  color: Colors.blue,
+                                ),
+                                tooltip: 'Übung bearbeiten',
+                                onPressed: () =>
+                                    _showExerciseDialog(exercise: ex),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                ),
+                                tooltip: 'Übung löschen',
+                                onPressed: () async {
+                                  await _exerciseService.deleteExercise(ex.id);
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               );
             },
-          );
-        },
-      ),
+          ),
+        ),
+      ],
     );
   }
 }
