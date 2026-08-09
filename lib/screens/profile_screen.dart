@@ -32,11 +32,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _autodartsController;
 
   final TextEditingController _newPasswordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   bool _isSaving = false;
   bool _isChangingPassword = false;
   late String? _currentAvatarUrl;
+  late bool _isPrivate;
+  late bool _showStats;
 
   @override
   void initState() {
@@ -45,10 +48,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _nameController = TextEditingController(text: widget.user.name);
     _clubController = TextEditingController(text: widget.user.club ?? '');
     _teamController = TextEditingController(text: widget.user.team ?? '');
-    _dartsController = TextEditingController(text: widget.user.dartsSetup ?? '');
+    _dartsController = TextEditingController(
+      text: widget.user.dartsSetup ?? '',
+    );
     _boardController = TextEditingController(text: widget.user.board ?? '');
-    _autodartsController =
-        TextEditingController(text: widget.user.autodartsUsername ?? '');
+    _autodartsController = TextEditingController(
+      text: widget.user.autodartsUsername ?? '',
+    );
+    _isPrivate = widget.user.isPrivate;
+    _showStats = widget.user.showStats;
   }
 
   /// Berechnet das Treue-Abzeichen basierend auf dem Erstellungsdatum
@@ -84,11 +92,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       badgeColor = Colors.green;
     }
 
-    return {
-      'label': badgeLabel,
-      'icon': badgeIcon,
-      'color': badgeColor,
-    };
+    return {'label': badgeLabel, 'icon': badgeIcon, 'color': badgeColor};
   }
 
   /// Dialog zum Ändern der Bild-URL
@@ -124,7 +128,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 setState(() => _currentAvatarUrl = '');
                 Navigator.pop(context);
               },
-              child: const Text('Bild entfernen', style: TextStyle(color: Colors.red)),
+              child: const Text(
+                'Bild entfernen',
+                style: TextStyle(color: Colors.red),
+              ),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -170,6 +177,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       board: _boardController.text.trim(),
       autodartsUsername: _autodartsController.text.trim(),
       createdAt: widget.user.createdAt,
+      isPrivate: _isPrivate,
+      showStats: _showStats,
     );
 
     try {
@@ -181,9 +190,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fehler beim Speichern: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Fehler beim Speichern: $e')));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -229,8 +238,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         currentMode == ThemeMode.dark
             ? Icons.dark_mode
             : (currentMode == ThemeMode.light
-                ? Icons.light_mode
-                : Icons.settings_brightness),
+                  ? Icons.light_mode
+                  : Icons.settings_brightness),
         color: Colors.deepOrange,
       ),
       title: const Text('Design-Modus'),
@@ -271,7 +280,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final previewUser = AppUser(
       uid: widget.user.uid,
-      name: _nameController.text.isNotEmpty ? _nameController.text : widget.user.name,
+      name: _nameController.text.isNotEmpty
+          ? _nameController.text
+          : widget.user.name,
       email: widget.user.email,
       role: widget.user.role,
       isTrainer: widget.user.isTrainer,
@@ -295,10 +306,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   Stack(
                     children: [
-                      UserAvatarWidget(
-                        user: previewUser,
-                        radius: 36,
-                      ),
+                      UserAvatarWidget(user: previewUser, radius: 36),
                       Positioned(
                         bottom: 0,
                         right: 0,
@@ -307,7 +315,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: const CircleAvatar(
                             radius: 12,
                             backgroundColor: Colors.deepOrange,
-                            child: Icon(Icons.edit, size: 14, color: Colors.white),
+                            child: Icon(
+                              Icons.edit,
+                              size: 14,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ),
@@ -366,7 +378,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 12),
           Card(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12.0,
+                vertical: 4.0,
+              ),
               child: ValueListenableBuilder<ThemeMode>(
                 valueListenable: themeModeNotifier,
                 builder: (context, currentMode, child) {
@@ -474,6 +489,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 32),
+          const Divider(),
+          const SizedBox(height: 16),
+
+          // PRIVATSPHÄRE-SEKTION
+          const Text(
+            'Privatsphäre',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  secondary: Icon(
+                    _isPrivate ? Icons.lock : Icons.public,
+                    color: Colors.deepOrange,
+                  ),
+                  title: const Text('Privates Profil'),
+                  subtitle: const Text(
+                    'Nur dein Trainer kann dein Profil sehen.',
+                  ),
+                  value: _isPrivate,
+                  activeColor: Colors.deepOrange,
+                  onChanged: (val) => setState(() => _isPrivate = val),
+                ),
+                const Divider(height: 1),
+                // NEU: SCHALTER FÜR ERFOLGE
+                SwitchListTile(
+                  secondary: const Icon(
+                    Icons.bar_chart,
+                    color: Colors.deepOrange,
+                  ),
+                  title: const Text('Trainingserfolge anzeigen'),
+                  subtitle: const Text(
+                    'Zeigt absolvierte Übungen im Profil an.',
+                  ),
+                  value: _showStats,
+                  activeColor: Colors.deepOrange,
+                  onChanged: (val) => setState(() => _showStats = val),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
           const Divider(),
           const SizedBox(height: 16),
 

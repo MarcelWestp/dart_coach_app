@@ -3,9 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_model.dart';
 import '../widgets/trainer_dashboard_widget.dart';
 import 'member_management_screen.dart';
-import 'exercise_list_screen.dart'; // NEU: Dein exakter Dateiname
+import 'exercise_list_screen.dart';
 import 'performance_test_screen.dart';
 import 'profile_screen.dart';
+import 'user_search_screen.dart'; // NEU: Import des Such-Screens
 
 /// Haupt-Screen für Trainer inklusive Bottom-NavigationBar zur Navigation zwischen allen Bereichen
 class TrainerMainScreen extends StatefulWidget {
@@ -23,27 +24,31 @@ class _TrainerMainScreenState extends State<TrainerMainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Liste aller verfügbaren Trainer-Ansichten
+    // Liste aller verfügbaren Trainer-Ansichten (inklusive Suche)
     final List<Widget> pages = [
       // Tab 0: Kader & Wochenpläne
       TrainerDashboardWidget(trainer: widget.trainer),
-      
-      // Tab 1: Mitglieder verwalten (mit Trainer-ID)
+
+      // Tab 1 (NEU): Nutzer suchen & Profile ansehen
+      UserSearchScreen(currentUser: widget.trainer),
+
+      // Tab 2: Mitglieder verwalten (mit Trainer-ID)
       MemberManagementScreen(currentTrainerId: widget.trainer.uid),
-      
-      // Tab 2: Übungen verwalten (Verlinkung auf deinen ExerciseListScreen)
+
+      // Tab 3: Übungen verwalten
       const ExerciseListScreen(),
-      
-      // Tab 3: Leistungstests verwalten
+
+      // Tab 4: Leistungstests verwalten
       const PerformanceTestScreen(),
-      
-      // Tab 4: Profil & Einstellungen
+
+      // Tab 5: Profil & Einstellungen
       ProfileScreen(user: widget.trainer),
     ];
 
     // Titelzeile in der AppBar passend zum gewählten Tab
     final List<String> titles = [
       'Trainer Dashboard',
+      'Nutzer suchen', // NEU
       'Mitglieder verwalten',
       'Übungen verwalten',
       'Leistungstests',
@@ -77,6 +82,12 @@ class _TrainerMainScreenState extends State<TrainerMainScreen> {
             icon: Icon(Icons.dashboard_outlined),
             selectedIcon: Icon(Icons.dashboard, color: Colors.deepOrange),
             label: 'Kader',
+          ),
+          // NEU: Suche-Icon in der Navigationsleiste
+          NavigationDestination(
+            icon: Icon(Icons.search_outlined),
+            selectedIcon: Icon(Icons.search, color: Colors.deepOrange),
+            label: 'Suche',
           ),
           NavigationDestination(
             icon: Icon(Icons.people_outline),

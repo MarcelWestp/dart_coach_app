@@ -6,11 +6,11 @@ class UserService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   // ===========================================================================
-  // NEU: Einzelne Benutzer-Abfragen für die main.dart
+  // Einzelne Benutzer-Abfragen
   // ===========================================================================
 
   /// Liefert die Daten eines einzelnen Benutzers als Live-Stream zurück.
-  /// Wird in main.dart verwendet, um die Rolle (Spieler/Trainer) dynamisch zu bestimmen.
+  /// Wird z. B. in main.dart und im UserProfileDetailScreen verwendet.
   Stream<AppUser?> getUserDataStream(String uid) {
     return _db.collection('users').doc(uid).snapshots().map((snapshot) {
       if (snapshot.exists && snapshot.data() != null) {
@@ -30,10 +30,46 @@ class UserService {
   }
 
   // ===========================================================================
+  // NEU: Nutzer-Suche & Filterung für den UserSearchScreen
+  // ===========================================================================
+
+  /// Stream aller bestätigten Nutzer für die Suche.
+  /// Filtert nach eingegebenem Suchtext (Name, Verein, Team) und Rolle (Spieler/Trainer).
+  Stream<List<AppUser>> searchUsers({
+    String query = '',
+    String? roleFilter = 'all',
+  }) {
+    return _db.collection('users').snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) => AppUser.fromMap(doc.data(), doc.id)).where((
+        user,
+      ) {
+        // Nur freigeschaltete Nutzer anzeigen
+        if (!user.approved) return false;
+
+        // 1. Rollen-Filter
+        if (roleFilter != null && roleFilter != 'all') {
+          if (roleFilter == 'trainer' && !user.isTrainer) return false;
+          if (roleFilter == 'player' && user.isTrainer) return false;
+        }
+
+        // 2. Textsuche nach Name, Verein oder Team (Groß-/Kleinschreibung ignorieren)
+        if (query.trim().isEmpty) return true;
+        final q = query.toLowerCase().trim();
+
+        final nameMatch = user.name.toLowerCase().contains(q);
+        final clubMatch = user.club?.toLowerCase().contains(q) ?? false;
+        final teamMatch = user.team?.toLowerCase().contains(q) ?? false;
+
+        return nameMatch || clubMatch || teamMatch;
+      }).toList();
+    });
+  }
+
+  // ===========================================================================
   // Profil-Bearbeitung & Verwaltung
   // ===========================================================================
 
-  /// Profil-Updates
+  /// Profil-Updates (z. B. Stammdaten, Equipment, Privatsphäre-Status)
   Future<void> updateUserProfile(AppUser user) async {
     await _db.collection('users').doc(user.uid).update(user.toMap());
   }
@@ -78,12 +114,16 @@ class UserService {
 
   /// Weist einem Spieler einen Trainer zu
   Future<void> assignPlayerToTrainer(String playerId, String trainerId) async {
-    await _db.collection('users').doc(playerId).update({'trainerId': trainerId});
+    await _db.collection('users').doc(playerId).update({
+      'trainerId': trainerId,
+    });
   }
 
   /// Entfernt die Trainerzuweisung eines Spielers
   Future<void> removePlayerFromTrainer(String playerId) async {
-    await _db.collection('users').doc(playerId).update({'trainerId': FieldValue.delete()});
+    await _db.collection('users').doc(playerId).update({
+      'trainerId': FieldValue.delete(),
+    });
   }
 
   /// Stream aller Spieler, die einem bestimmten Trainer zugewiesen sind
@@ -91,7 +131,10 @@ class UserService {
     return _db.collection('users').snapshots().map((snapshot) {
       return snapshot.docs
           .map((doc) => AppUser.fromMap(doc.data(), doc.id))
-          .where((user) => !user.isTrainer && user.trainerId == trainerId && user.approved)
+          .where(
+            (user) =>
+                !user.isTrainer && user.trainerId == trainerId && user.approved,
+          )
           .toList();
     });
   }
@@ -102,11 +145,51 @@ class UserService {
       return snapshot.docs
           .map((doc) => AppUser.fromMap(doc.data(), doc.id))
           .where((user) {
-        final bool isPlayer = !user.isTrainer;
-        final bool hasNoTrainer =
-            user.trainerId == null || user.trainerId!.trim().isEmpty;
-        return isPlayer && hasNoTrainer && user.approved;
-      }).toList();
+            final bool isPlayer = !user.isTrainer;
+            final bool hasNoTrainer =
+                user.trainerId == null || user.trainerId!.trim().isEmpty;
+            return isPlayer && hasNoTrainer && user.approved;
+          })
+          .toList();
     });
+  }
+
+  /// Berechnet die Anzahl absolvierter Übungen für einen Nutzer (Gesamt, dieser Monat, diese Woche)
+  Stream<Map<String, int>> getUserExerciseStats(String userId) {
+    return _db
+        .collection('results')
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) {
+          final now = DateTime.now();
+          final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+          final beginningOfWeek = DateTime(
+            startOfWeek.year,
+            startOfWeek.month,
+            startOfWeek.day,
+          );
+          final beginningOfMonth = DateTime(now.year, now.month, 1);
+
+          int totalCount = 0;
+          int monthCount = 0;
+          int weekCount = 0;
+
+          for (var doc in snapshot.docs) {
+            final data = doc.data();
+            if (data['timestamp'] != null) {
+              final DateTime date = (data['timestamp'] as Timestamp).toDate();
+              totalCount++;
+
+              if (date.isAfter(beginningOfMonth)) {
+                monthCount++;
+              }
+              if (date.isAfter(beginningOfWeek)) {
+                weekCount++;
+              }
+            }
+          }
+
+          return {'total': totalCount, 'month': monthCount, 'week': weekCount};
+        });
   }
 }

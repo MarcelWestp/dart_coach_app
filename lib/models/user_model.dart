@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum UserRole { player, trainer }
 
-/// Modell für einen App-Benutzer inklusive Profilbild (avatarUrl)
+/// Modell für einen App-Benutzer inklusive Profilbild (avatarUrl) und Privatsphäre-Einstellung (isPrivate)
 class AppUser {
   final String uid;
   final String name;
@@ -11,7 +11,7 @@ class AppUser {
   final bool isTrainer;
   final bool approved;
   final String? trainerId;
-  final String? avatarUrl; // NEU: URL oder Schlüssel für das Profilbild
+  final String? avatarUrl; // URL oder Schlüssel für das Profilbild
 
   final String? club;
   final String? team;
@@ -19,6 +19,8 @@ class AppUser {
   final String? board;
   final String? autodartsUsername;
   final DateTime createdAt;
+  final bool isPrivate;
+  final bool showStats;
 
   AppUser({
     required this.uid,
@@ -35,8 +37,11 @@ class AppUser {
     this.board,
     this.autodartsUsername,
     DateTime? createdAt,
+    this.isPrivate = false,
+    this.showStats = true,
   }) : createdAt = createdAt ?? DateTime.now();
 
+  /// Konvertiert das AppUser-Objekt in ein Map-Format für Firestore
   Map<String, dynamic> toMap() {
     return {
       'name': name,
@@ -52,9 +57,12 @@ class AppUser {
       'board': board ?? '',
       'autodartsUsername': autodartsUsername ?? '',
       'createdAt': Timestamp.fromDate(createdAt),
+      'isPrivate': isPrivate, 
+      'showStats': showStats,
     };
   }
 
+  /// Erstellt ein AppUser-Objekt aus einem Firestore-Dokument (Map)
   factory AppUser.fromMap(Map<String, dynamic> map, String docId) {
     final String userRole =
         map['role'] ?? (map['isTrainer'] == true ? 'trainer' : 'player');
@@ -77,6 +85,8 @@ class AppUser {
       createdAt: map['createdAt'] != null
           ? (map['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
+      isPrivate: map['isPrivate'] ?? false,
+      showStats: map['showStats'] ?? true,
     );
   }
 }

@@ -3,8 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_model.dart';
 import '../widgets/player_dashboard_widget.dart';
 import 'profile_screen.dart';
+import 'user_search_screen.dart'; // NEU: Import des Such-Screens
 
-/// Haupt-Screen für Spieler inklusive Navigation zwischen Dashboard und Profil
+/// Haupt-Screen für Spieler inklusive Navigation zwischen Dashboard, Suche und Profil
 class PlayerMainScreen extends StatefulWidget {
   final AppUser user;
 
@@ -19,13 +20,17 @@ class _PlayerMainScreenState extends State<PlayerMainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Liste der Seiten (jetzt mit Suche an zweiter Stelle)
     final List<Widget> pages = [
       PlayerDashboardWidget(user: widget.user),
+      UserSearchScreen(currentUser: widget.user), // NEU: Such-Screen
       ProfileScreen(user: widget.user),
     ];
 
+    // Titel für die AppBar je nach aktivem Tab
     final List<String> titles = [
       'Dart Coach',
+      'Nutzer suchen', // NEU
       'Mein Profil',
     ];
 
@@ -53,6 +58,12 @@ class _PlayerMainScreenState extends State<PlayerMainScreen> {
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home, color: Colors.deepOrange),
             label: 'Dashboard',
+          ),
+          // NEU: Navigations-Ziel für die Suche
+          NavigationDestination(
+            icon: Icon(Icons.search_outlined),
+            selectedIcon: Icon(Icons.search, color: Colors.deepOrange),
+            label: 'Suche',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),

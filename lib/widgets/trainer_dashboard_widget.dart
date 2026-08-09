@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/user_service.dart';
 import '../screens/weekly_plan_screen.dart';
-import '../screens/player_detail_screen.dart';
 import '../screens/player_stats_overview_screen.dart';
 import 'user_avatar_widget.dart'; // NEU: Import für das universelle Avatar-Widget
 
@@ -182,22 +181,6 @@ class TrainerDashboardWidget extends StatelessWidget {
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Trends & Statistik
-                          IconButton(
-                            icon: const Icon(
-                              Icons.show_chart,
-                              color: Colors.blue,
-                            ),
-                            tooltip: 'Übungs-Trends & Statistik',
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      PlayerDetailScreen(player: player),
-                                ),
-                              );
-                            },
-                          ),
                           IconButton(
                             icon: const Icon(
                               Icons.bar_chart,
