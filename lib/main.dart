@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_fonts/google_fonts.dart'; // NEU: Google Fonts Paket
+
+// Firebase Options
 import 'firebase_options.dart';
+
+// Services
+import 'services/theme_service.dart';
+import 'services/user_service.dart';
+
+// Modelle
 import 'models/user_model.dart';
-import 'services/auth_service.dart';
-import 'theme/app_theme.dart';
-import 'screens/login_screen.dart';
-import 'screens/exercise_list_screen.dart';
-import 'screens/performance_test_screen.dart';
-import 'screens/profile_screen.dart';
-import 'screens/member_management_screen.dart';
-import 'widgets/player_dashboard_widget.dart';
-import 'widgets/trainer_dashboard_widget.dart';
+
+// Screens & Widgets
+import 'screens/login_screen.dart'; // Verbindet deinen LoginScreen!
+import 'screens/trainer_main_screen.dart';
+import 'screens/player_main_screen.dart';
 
 /// Globaler Notifier für den ThemeMode (System, Light, Dark)
 final ValueNotifier<ThemeMode> themeModeNotifier =
@@ -19,9 +24,21 @@ final ValueNotifier<ThemeMode> themeModeNotifier =
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 1. Firebase mit den plattformspezifischen Optionen initialisieren
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // 2. Gespeichertes Theme laden (mit Fallback abgesichert)
+  try {
+    final themeService = ThemeService();
+    final savedThemeMode = await themeService.loadThemeMode();
+    themeModeNotifier.value = savedThemeMode;
+  } catch (e) {
+    debugPrint('Theme konnte nicht geladen werden: $e');
+  }
+
   runApp(const MyApp());
 }
 
@@ -34,173 +51,112 @@ class MyApp extends StatelessWidget {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeModeNotifier,
       builder: (context, currentMode, child) {
+        // Erstellen des Basis-Lichtfarbschemas
+        final lightColorScheme = ColorScheme.fromSeed(
+          seedColor: Colors.deepOrange,
+          brightness: Brightness.light,
+        );
+
+        // Erstellen des Basis-Dunkelfarbschemas
+        final darkColorScheme = ColorScheme.fromSeed(
+          seedColor: Colors.deepOrange,
+          brightness: Brightness.dark,
+        );
+
         return MaterialApp(
           title: 'Dart Coach App',
           debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme,      // Helles Design
-          darkTheme: AppTheme.darkTheme,    // Dunkles Design
-          themeMode: currentMode,          // Aktueller Modus (System / Light / Dark)
-          home: const AuthWrapper(),
+          themeMode: currentMode,
+
+          // LIGHT THEME mit Google Fonts (Noto Sans)
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: lightColorScheme,
+            textTheme: GoogleFonts.notoSansTextTheme(
+              ThemeData.light().textTheme,
+            ),
+          ),
+
+          // DARK THEME mit Google Fonts (Noto Sans)
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            colorScheme: darkColorScheme,
+            textTheme: GoogleFonts.notoSansTextTheme(
+              ThemeData.dark().textTheme,
+            ),
+          ),
+
+          // Einstiegspunkt in die App
+          home: const MainNavigationWrapper(),
         );
       },
     );
   }
 }
 
-class AuthWrapper extends StatelessWidget {
-  const AuthWrapper({super.key});
+/// Der zentrale Auth-Wrapper zur Steuerung zwischen Login und den Haupt-Screens mit Navbar
+class MainNavigationWrapper extends StatelessWidget {
+  const MainNavigationWrapper({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final UserService userService = UserService();
+
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+      builder: (context, authSnapshot) {
+        if (authSnapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            body: Center(
+              child: CircularProgressIndicator(color: Colors.deepOrange),
+            ),
           );
         }
 
-        if (snapshot.hasData && snapshot.data != null) {
-          return HomeScreen(uid: snapshot.data!.uid);
+        if (!authSnapshot.hasData || authSnapshot.data == null) {
+          return const LoginScreen();
         }
 
-        return const LoginScreen();
-      },
-    );
-  }
-}
+        final firebaseUser = authSnapshot.data!;
 
-class HomeScreen extends StatelessWidget {
-  final String uid;
-
-  const HomeScreen({
-    super.key,
-    required this.uid,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final AuthService authService = AuthService();
-
-    return FutureBuilder<AppUser?>(
-      future: authService.getUserProfile(uid),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        final user = snapshot.data;
-        if (user == null) {
-          return const Scaffold(
-            body: Center(child: Text('Benutzerprofil nicht gefunden.')),
-          );
-        }
-
-        // SPERRBILDSCHIRM: Falls Konto noch nicht freigeschaltet
-        if (!user.approved) {
-          return Scaffold(
-            appBar: AppBar(
-              title: const Text('Wartet auf Freischaltung'),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.logout),
-                  onPressed: () => authService.logout(),
+        return StreamBuilder<AppUser?>(
+          stream: userService.getUserDataStream(firebaseUser.uid),
+          builder: (context, userSnapshot) {
+            if (userSnapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(
+                  child: CircularProgressIndicator(color: Colors.deepOrange),
                 ),
-              ],
-            ),
-            body: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.hourglass_top,
-                      size: 80, color: Colors.deepOrange),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Hallo ${user.name}!',
-                    style: const TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Dein Konto wurde erfolgreich erstellt, erfordert jedoch die Freischaltung durch einen Trainer/Admin.\n\nBitte gedulde dich kurz.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 32),
-                  ElevatedButton.icon(
-                    onPressed: () => authService.logout(),
-                    icon: const Icon(Icons.logout),
-                    label: const Text('Abmelden'),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
+              );
+            }
 
-        // FREIGESCHALTETES DASHBOARD
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(user.isTrainer ? 'Trainer Dashboard' : 'Spieler Dashboard'),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.account_circle),
-                tooltip: 'Mein Profil & Einstellungen',
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => ProfileScreen(user: user),
-                    ),
-                  );
-                },
-              ),
-              if (user.isTrainer) ...[
-                IconButton(
-                  icon: const Icon(Icons.admin_panel_settings),
-                  tooltip: 'Mitgliederverwaltung',
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            MemberManagementScreen(currentTrainerId: user.uid),
+            final appUser = userSnapshot.data;
+
+            if (appUser == null) {
+              return Scaffold(
+                body: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('Profil wird geladen...'),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => FirebaseAuth.instance.signOut(),
+                        child: const Text('Abmelden'),
                       ),
-                    );
-                  },
+                    ],
+                  ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.list_alt),
-                  tooltip: 'Übungen verwalten',
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                          builder: (_) => const ExerciseListScreen()),
-                    );
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.assignment),
-                  tooltip: 'Leistungstests',
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                          builder: (_) => const PerformanceTestScreen()),
-                    );
-                  },
-                ),
-              ],
-              IconButton(
-                icon: const Icon(Icons.logout),
-                onPressed: () => authService.logout(),
-              ),
-            ],
-          ),
-          body: user.isTrainer
-              ? TrainerDashboardWidget(trainer: user)
-              : PlayerDashboardWidget(user: user),
+              );
+            }
+
+            // Rollenbasierte Weiterleitung inklusive Navbar
+            if (appUser.isTrainer) {
+              return TrainerMainScreen(trainer: appUser);
+            }
+
+            return PlayerMainScreen(user: appUser);
+          },
         );
       },
     );
