@@ -70,10 +70,8 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
   double _getValue(ExerciseResult r) {
     if (widget.exercise.metricType == MetricType.score) {
       return (r.score ?? 0).toDouble();
-    } else if (widget.exercise.metricType == MetricType.hits) {
-      return r.hits?.toDouble() ?? 0.0;
-    } else if (widget.exercise.metricType == MetricType.attempts) {
-      return r.attempts?.toDouble() ?? 0.0;
+    } else if (widget.exercise.metricType == MetricType.hitsAndAttempts) {
+      return (r.hits ?? 0).toDouble();
     } else if (widget.exercise.metricType == MetricType.timeInSeconds) {
       return (r.timeInSeconds ?? 0).toDouble();
     }
@@ -344,46 +342,12 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                       child: LineChart(
                         LineChartData(
                           gridData: const FlGridData(show: true),
-                          titlesData: FlTitlesData(
-                            topTitles: const AxisTitles(
+                          titlesData: const FlTitlesData(
+                            topTitles: AxisTitles(
                               sideTitles: SideTitles(showTitles: false),
                             ),
-                            rightTitles: const AxisTitles(
+                            rightTitles: AxisTitles(
                               sideTitles: SideTitles(showTitles: false),
-                            ),
-                            // X-Achsen-Beschriftung mit den konkreten Spieldaten (DD.MM.)
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                reservedSize: 30,
-                                interval:
-                                    1, // Für jeden Datenpunkt eine Beschriftung rendern
-                                getTitlesWidget: (double value, TitleMeta meta) {
-                                  int index = value.toInt();
-
-                                  // Validierung, ob der Index im zulässigen Bereich liegt
-                                  if (index >= 0 &&
-                                      index < sortedFiltered.length) {
-                                    final DateTime date =
-                                        sortedFiltered[index].timestamp;
-                                    final String formattedDate =
-                                        '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.';
-
-                                    return Padding(
-                                      padding: const EdgeInsets.only(top: 8.0),
-                                      child: Text(
-                                        formattedDate,
-                                        style: const TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.deepOrange,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                  return const SizedBox.shrink();
-                                },
-                              ),
                             ),
                           ),
                           borderData: FlBorderData(
@@ -416,13 +380,12 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                 ),
                 const SizedBox(height: 8),
 
-                // --- HISTORIEN-LISTE MIT NOTIZEN UND DURCHLÄUFEN ---
+                // --- HISTORIEN-LISTE ---
                 ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: sortedFiltered.length,
                   itemBuilder: (context, index) {
-                    // Neueste Ergebnisse zuerst in der Historienliste anzeigen
                     final res =
                         sortedFiltered[sortedFiltered.length - 1 - index];
                     final dateStr =
@@ -431,70 +394,23 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                     String displayVal = '';
                     if (widget.exercise.metricType == MetricType.score) {
                       displayVal = '${res.score ?? 0} Punkte';
-                    } else if (widget.exercise.metricType == MetricType.hits) {
-                      displayVal = '${res.hits} Treffer';
                     } else if (widget.exercise.metricType ==
-                        MetricType.attempts) {
-                      displayVal = '${res.attempts} Versuche';
+                        MetricType.hitsAndAttempts) {
+                      displayVal =
+                          '${res.hits ?? 0} / ${res.attempts ?? 0} Treffer';
                     } else if (widget.exercise.metricType ==
                         MetricType.timeInSeconds) {
                       displayVal = '${res.timeInSeconds ?? 0} Sek.';
                     }
 
-                    // Falls ein Durchlauf-Index hinterlegt ist (z. B. Durchlauf 2)
-                    final String roundInfo = res.roundIndex != null
-                        ? ' (Durchlauf ${res.roundIndex})'
-                        : '';
-
-                    return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 4.0),
-                      elevation: 1,
-                      child: ListTile(
-                        dense: true,
-                        leading: const Icon(
-                          Icons.history,
-                          color: Colors.deepOrange,
-                        ),
-                        title: Text(
-                          '$displayVal$roundInfo',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              res.dayOfWeek != null
-                                  ? '${res.dayOfWeek}, $dateStr'
-                                  : dateStr,
-                            ),
-                            // NEU: Spieler-Bemerkung anzeigen, falls vorhanden
-                            if (res.playerNote != null &&
-                                res.playerNote!.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Icon(
-                                    Icons.chat_bubble_outline,
-                                    size: 14,
-                                    color: Colors.grey,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      '"${res.playerNote}"',
-                                      style: TextStyle(
-                                        fontStyle: FontStyle.italic,
-                                        color: Colors.grey.shade800,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ],
-                        ),
+                    return ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.history, color: Colors.grey),
+                      title: Text(
+                        displayVal,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
+                      subtitle: Text(dateStr),
                     );
                   },
                 ),

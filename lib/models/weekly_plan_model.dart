@@ -1,43 +1,4 @@
-/// Art der Übungsvorgabe im Wochenplan
-enum TargetType { none, duration, reps }
-
-/// Einzelne eingeplante Übung mit optionaler Zielvorgabe (Dauer oder Wiederholungen)
-class ScheduledExercise {
-  final String exerciseId;
-  final TargetType targetType;
-  final String targetValue; // z. B. "15 Min" oder "5 Serien"
-  final String? note;
-
-  ScheduledExercise({
-    required this.exerciseId,
-    this.targetType = TargetType.none,
-    this.targetValue = '',
-    this.note,
-  });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'exerciseId': exerciseId,
-      'targetType': targetType.name,
-      'targetValue': targetValue,
-      'note': note,
-    };
-  }
-
-  factory ScheduledExercise.fromMap(Map<String, dynamic> map) {
-    return ScheduledExercise(
-      exerciseId: map['exerciseId'] ?? '',
-      targetType: TargetType.values.firstWhere(
-        (e) => e.name == map['targetType'],
-        orElse: () => TargetType.none,
-      ),
-      targetValue: map['targetValue'] ?? '',
-      note: map['note'],
-    );
-  }
-}
-
-/// Tagesplan eines Spielers mit einer Liste zugewiesener ScheduledExercises
+/// Zuordnung von Übungen zu einzelnen Wochentagen
 class DailySchedule {
   final String dayOfWeek; // z.B. "Montag", "Dienstag"
   final List<String> exerciseIds; // IDs der zugewiesenen Übungen

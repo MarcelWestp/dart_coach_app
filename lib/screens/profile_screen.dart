@@ -5,8 +5,7 @@ import '../services/user_service.dart';
 import '../widgets/user_avatar_widget.dart';
 import '../main.dart'; // Import für themeModeNotifier
 
-/// Profil-Bildschirm zur Verwaltung von Stammdaten, Equipment, Appearance & Sicherheit.
-/// Fügt sich ohne doppeltes Scaffold/AppBar nahtlos in die Hauptnavigation ein.
+/// Profil-Bildschirm zur Verwaltung von Stammdaten, Equipment, Appearance & Sicherheit
 class ProfileScreen extends StatefulWidget {
   final AppUser user;
 
@@ -221,8 +220,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   /// Erstellt den Kachel-Eintrag für die ThemeMode-Auswahl
   Widget _buildThemeDropdownTile(ThemeMode currentMode) {
-    final ThemeService themeService = ThemeService();
-
     return ListTile(
       leading: Icon(
         currentMode == ThemeMode.dark
@@ -236,12 +233,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       trailing: DropdownButton<ThemeMode>(
         value: currentMode,
         underline: const SizedBox(),
-        onChanged: (newMode) async {
+        onChanged: (newMode) {
           if (newMode != null) {
-            // 1. Live im UI umschalten
             themeModeNotifier.value = newMode;
-            // 2. Lokal auf dem Gerät dauerhaft speichern
-            await themeService.saveThemeMode(newMode);
           }
         },
         items: const [
@@ -278,260 +272,261 @@ class _ProfileScreenState extends State<ProfileScreen> {
       createdAt: widget.user.createdAt,
     );
 
-    // KEIN Scaffold und KEINE innere AppBar mehr!
-    // Stattdessen wird der Scroll-Inhalt direkt an den MainScreen übergeben.
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // KOPFBEREICH & AVATAR
-          Card(
-            elevation: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  Stack(
-                    children: [
-                      UserAvatarWidget(
-                        user: previewUser,
-                        radius: 36,
+    return Scaffold(
+      appBar: AppBar(title: const Text('Mein Profil')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // KOPFBEREICH & AVATAR
+            Card(
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Stack(
+                      children: [
+                        UserAvatarWidget(
+                          user: previewUser,
+                          radius: 36,
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: InkWell(
+                            onTap: _showAvatarEditDialog,
+                            child: const CircleAvatar(
+                              radius: 12,
+                              backgroundColor: Colors.deepOrange,
+                              child: Icon(Icons.edit, size: 14, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.user.name,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            widget.user.email,
+                            style: const TextStyle(color: Colors.grey),
+                          ),
+                          const SizedBox(height: 8),
+                          Tooltip(
+                            message: 'Registriert am $dateFormatted',
+                            waitDuration: const Duration(milliseconds: 200),
+                            child: Chip(
+                              avatar: Icon(
+                                badge['icon'] as IconData,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                              label: Text(
+                                badge['label'] as String,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              backgroundColor: badge['color'] as Color,
+                            ),
+                          ),
+                        ],
                       ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: InkWell(
-                          onTap: _showAvatarEditDialog,
-                          child: const CircleAvatar(
-                            radius: 12,
-                            backgroundColor: Colors.deepOrange,
-                            child: Icon(Icons.edit, size: 14, color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // ERSCHEINUNGSBILD
+            const Text(
+              'Erscheinungsbild',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                child: ValueListenableBuilder<ThemeMode>(
+                  valueListenable: themeModeNotifier,
+                  builder: (context, currentMode, child) {
+                    return _buildThemeDropdownTile(currentMode);
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // STAMMDATEN & EQUIPMENT
+            Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Stammdaten & Verein',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Vollständiger Name',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.person_outline),
+                    ),
+                    onChanged: (val) => setState(() {}),
+                    validator: (val) =>
+                        val == null || val.isEmpty ? 'Bitte Name eingeben' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _clubController,
+                          decoration: const InputDecoration(
+                            labelText: 'Verein',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.groups_outlined),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _teamController,
+                          decoration: const InputDecoration(
+                            labelText: 'Team (z. B. Team A)',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.shield_outlined),
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.user.name,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          widget.user.email,
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                        const SizedBox(height: 8),
-                        Tooltip(
-                          message: 'Registriert am $dateFormatted',
-                          waitDuration: const Duration(milliseconds: 200),
-                          child: Chip(
-                            avatar: Icon(
-                              badge['icon'] as IconData,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                            label: Text(
-                              badge['label'] as String,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            backgroundColor: badge['color'] as Color,
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Mein Darts-Equipment',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _dartsController,
+                    decoration: const InputDecoration(
+                      labelText: 'Darts (z. B. Target Swiss Point 23g)',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.gps_fixed),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _boardController,
+                    decoration: const InputDecoration(
+                      labelText: 'Dartboard (z. B. Winmau Blade 6)',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.adjust),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _autodartsController,
+                    decoration: const InputDecoration(
+                      labelText: 'Scolia/Autodarts Username (Optional)',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.videocam_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _isSaving
+                      ? const Center(child: CircularProgressIndicator())
+                      : ElevatedButton.icon(
+                          onPressed: _saveProfile,
+                          icon: const Icon(Icons.save),
+                          label: const Text('Profil speichern'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.deepOrange,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size(double.infinity, 48),
+                          ),
+                        ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 24),
+            const SizedBox(height: 32),
+            const Divider(),
+            const SizedBox(height: 16),
 
-          // ERSCHEINUNGSBILD
-          const Text(
-            'Erscheinungsbild',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-              child: ValueListenableBuilder<ThemeMode>(
-                valueListenable: themeModeNotifier,
-                builder: (context, currentMode, child) {
-                  return _buildThemeDropdownTile(currentMode);
-                },
+            // PASSWORT ÄNDERN
+            const Text(
+              'Sicherheit & Passwort',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Form(
+              key: _passwordFormKey,
+              child: Column(
+                children: [
+                  TextFormField(
+                    controller: _newPasswordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Neues Passwort',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.lock_outline),
+                    ),
+                    validator: (val) => val != null && val.length < 6
+                        ? 'Mindestens 6 Zeichen erforderlich'
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _confirmPasswordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Neues Passwort wiederholen',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.lock_reset),
+                    ),
+                    validator: (val) {
+                      if (val != _newPasswordController.text) {
+                        return 'Passwörter stimmen nicht überein';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _isChangingPassword
+                      ? const CircularProgressIndicator()
+                      : OutlinedButton.icon(
+                          onPressed: _changePassword,
+                          icon: const Icon(Icons.security),
+                          label: const Text('Passwort ändern'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.deepOrange,
+                            side: const BorderSide(color: Colors.deepOrange),
+                            minimumSize: const Size(double.infinity, 48),
+                          ),
+                        ),
+                ],
               ),
             ),
-          ),
-          const SizedBox(height: 24),
-
-          // STAMMDATEN & EQUIPMENT
-          Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Stammdaten & Verein',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Vollständiger Name',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.person_outline),
-                  ),
-                  onChanged: (val) => setState(() {}),
-                  validator: (val) =>
-                      val == null || val.isEmpty ? 'Bitte Name eingeben' : null,
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _clubController,
-                        decoration: const InputDecoration(
-                          labelText: 'Verein',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.groups_outlined),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _teamController,
-                        decoration: const InputDecoration(
-                          labelText: 'Team (z. B. Team A)',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.shield_outlined),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Mein Darts-Equipment',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _dartsController,
-                  decoration: const InputDecoration(
-                    labelText: 'Darts (z. B. Target Swiss Point 23g)',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.gps_fixed),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _boardController,
-                  decoration: const InputDecoration(
-                    labelText: 'Dartboard (z. B. Winmau Blade 6)',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.adjust),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _autodartsController,
-                  decoration: const InputDecoration(
-                    labelText: 'Scolia/Autodarts Username (Optional)',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.videocam_outlined),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _isSaving
-                    ? const Center(child: CircularProgressIndicator())
-                    : ElevatedButton.icon(
-                        onPressed: _saveProfile,
-                        icon: const Icon(Icons.save),
-                        label: const Text('Profil speichern'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepOrange,
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size(double.infinity, 48),
-                        ),
-                      ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 32),
-          const Divider(),
-          const SizedBox(height: 16),
-
-          // PASSWORT ÄNDERN
-          const Text(
-            'Sicherheit & Passwort',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          Form(
-            key: _passwordFormKey,
-            child: Column(
-              children: [
-                TextFormField(
-                  controller: _newPasswordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Neues Passwort',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock_outline),
-                  ),
-                  validator: (val) => val != null && val.length < 6
-                      ? 'Mindestens 6 Zeichen erforderlich'
-                      : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _confirmPasswordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Neues Passwort wiederholen',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock_reset),
-                  ),
-                  validator: (val) {
-                    if (val != _newPasswordController.text) {
-                      return 'Passwörter stimmen nicht überein';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                _isChangingPassword
-                    ? const CircularProgressIndicator()
-                    : OutlinedButton.icon(
-                        onPressed: _changePassword,
-                        icon: const Icon(Icons.security),
-                        label: const Text('Passwort ändern'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.deepOrange,
-                          side: const BorderSide(color: Colors.deepOrange),
-                          minimumSize: const Size(double.infinity, 48),
-                        ),
-                      ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }

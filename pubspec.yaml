@@ -38,8 +38,6 @@ dependencies:
   firebase_auth: ^6.5.7
   cloud_firestore: ^6.8.0
   fl_chart: ^1.2.0
-  shared_preferences: ^2.2.2
-  google_fonts: ^8.2.1
 
 dev_dependencies:
   flutter_test:
