@@ -14,7 +14,8 @@ import '../widgets/weekly_plan/assign_test_dialog.dart';
 import '../widgets/weekly_plan/edit_day_schedule_dialog.dart';
 import '../widgets/weekly_plan/enter_or_edit_result_dialog.dart';
 
-/// Wochenansicht mit integrierter Leistungstest-Zuweisung, Tag-Filtern, Vorgaben und Trainer-Notizen
+/// Wochenansicht mit integrierter Leistungstest-Zuweisung, Tag-Filtern, Vorgaben und Trainer-Notizen.
+/// Enthält optische Hervorhebung des heutigen Tages und Schnell-Navigation zur aktuellen Woche.
 class WeeklyPlanScreen extends StatefulWidget {
   final String targetPlayerId;
   final bool isTrainer;
@@ -73,6 +74,26 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
     });
   }
 
+  /// Springt sofort zur aktuellen Kalenderwoche zurück
+  void _jumpToCurrentWeek() {
+    setState(() {
+      _selectedDate = DateTime.now();
+      _updateWeekAndYear();
+    });
+  }
+
+  /// Berechnet das exakte Datum für einen bestimmten Wochentag (0 = Montag, 6 = Sonntag)
+  DateTime _getDateForDayIndex(int dayIndex) {
+    DateTime monday = _selectedDate.subtract(
+      Duration(days: _selectedDate.weekday - 1),
+    );
+    return DateTime(
+      monday.year,
+      monday.month,
+      monday.day,
+    ).add(Duration(days: dayIndex));
+  }
+
   /// Dialog für Trainer zur Zuweisung eines Leistungstests für die aktuelle KW
   void _showAssignTestDialog(
     List<PerformanceTest> availableTests,
@@ -90,7 +111,7 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
     );
   }
 
-  /// NEU: Dialog für Trainer zum Hinzufügen / Bearbeiten einer Notiz zu einer geplanten Übung
+  /// Dialog für Trainer zum Hinzufügen / Bearbeiten einer Notiz zu einer geplanten Übung
   void _showEditTrainerNoteDialog(
     TrainingPlan currentPlan,
     String dayName,
@@ -144,30 +165,49 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final todayMidnight = DateTime(now.year, now.month, now.day);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Wochen-Trainingsplan')),
       body: Column(
         children: [
+          // WOCHEN-NAVIGATION MIT HEUTE-BUTTON
           Container(
             color: Colors.deepOrange.shade50,
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
                   icon: const Icon(Icons.arrow_back_ios),
+                  tooltip: 'Vorherige Woche',
                   onPressed: () => _changeWeek(-1),
                 ),
-                Text(
-                  'Kalenderwoche $_currentWeekNumber ($_currentYear)',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.deepOrange,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      'Kalenderwoche $_currentWeekNumber ($_currentYear)',
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.deepOrange,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.today,
+                        color: Colors.deepOrange,
+                      ),
+                      tooltip: 'Zur aktuellen Woche springen',
+                      onPressed: _jumpToCurrentWeek,
+                    ),
+                  ],
                 ),
                 IconButton(
                   icon: const Icon(Icons.arrow_forward_ios),
+                  tooltip: 'Nächste Woche',
                   onPressed: () => _changeWeek(1),
                 ),
               ],
@@ -190,16 +230,16 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                     final assignedTest = assignedTestSnapshot.data;
                     final PerformanceTest? currentWeekTest =
                         assignedTest != null
-                        ? allTests.firstWhere(
-                            (t) => t.id == assignedTest.testId,
-                            orElse: () => PerformanceTest(
-                              id: '',
-                              title: 'Unbekannter Test',
-                              description: '',
-                              exerciseIds: [],
-                            ),
-                          )
-                        : null;
+                            ? allTests.firstWhere(
+                                (t) => t.id == assignedTest.testId,
+                                orElse: () => PerformanceTest(
+                                  id: '',
+                                  title: 'Unbekannter Test',
+                                  description: '',
+                                  exerciseIds: [],
+                                ),
+                              )
+                            : null;
 
                     return StreamBuilder<List<Exercise>>(
                       stream: _exerciseService.getExercises(),
@@ -223,7 +263,9 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                 if (planSnapshot.connectionState ==
                                     ConnectionState.waiting) {
                                   return const Center(
-                                    child: CircularProgressIndicator(),
+                                    child: CircularProgressIndicator(
+                                      color: Colors.deepOrange,
+                                    ),
                                   );
                                 }
 
@@ -297,16 +339,16 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                     ),
                                                     style:
                                                         ElevatedButton.styleFrom(
-                                                          backgroundColor:
-                                                              Colors.deepOrange,
-                                                          foregroundColor:
-                                                              Colors.white,
-                                                        ),
+                                                      backgroundColor:
+                                                          Colors.deepOrange,
+                                                      foregroundColor:
+                                                          Colors.white,
+                                                    ),
                                                     onPressed: () =>
                                                         _showAssignTestDialog(
-                                                          allTests,
-                                                          plan.trainerId,
-                                                        ),
+                                                      allTests,
+                                                      plan.trainerId,
+                                                    ),
                                                   ),
                                               ],
                                             ),
@@ -337,25 +379,25 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                   ),
                                                   style:
                                                       ElevatedButton.styleFrom(
-                                                        backgroundColor:
-                                                            Colors.green,
-                                                        foregroundColor:
-                                                            Colors.white,
-                                                        minimumSize: const Size(
-                                                          double.infinity,
-                                                          40,
-                                                        ),
-                                                      ),
+                                                    backgroundColor:
+                                                        Colors.green,
+                                                    foregroundColor:
+                                                        Colors.white,
+                                                    minimumSize: const Size(
+                                                      double.infinity,
+                                                      40,
+                                                    ),
+                                                  ),
                                                   onPressed: () {
                                                     Navigator.of(context).push(
                                                       MaterialPageRoute(
                                                         builder: (_) =>
                                                             TakeTestScreen(
-                                                              test:
-                                                                  currentWeekTest,
-                                                              playerId: widget
-                                                                  .targetPlayerId,
-                                                            ),
+                                                          test:
+                                                              currentWeekTest,
+                                                          playerId: widget
+                                                              .targetPlayerId,
+                                                        ),
                                                       ),
                                                     );
                                                   },
@@ -375,7 +417,11 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                     ),
 
                                     // TAGES-ÜBUNGEN DER WOCHE
-                                    ..._daysOfWeek.map((dayName) {
+                                    ...List.generate(_daysOfWeek.length, (index) {
+                                      final dayName = _daysOfWeek[index];
+                                      final dayDate = _getDateForDayIndex(index);
+                                      final bool isToday = dayDate.isAtSameMomentAs(todayMidnight);
+
                                       final daySchedule = plan.days.firstWhere(
                                         (d) => d.dayOfWeek == dayName,
                                         orElse: () => DailySchedule(
@@ -388,7 +434,22 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                         margin: const EdgeInsets.symmetric(
                                           vertical: 6,
                                         ),
-                                        elevation: 2,
+                                        elevation: isToday ? 4 : 2,
+                                        color: isToday
+                                            ? Colors.deepOrange.shade50
+                                            : null,
+                                        shape: RoundedRectangleBorder(
+                                          side: isToday
+                                              ? const BorderSide(
+                                                  color: Colors.deepOrange,
+                                                  width: 2,
+                                                )
+                                              : BorderSide(
+                                                  color: Colors.grey.shade300,
+                                                ),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
                                         child: Padding(
                                           padding: const EdgeInsets.all(12.0),
                                           child: Column(
@@ -400,14 +461,53 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                     MainAxisAlignment
                                                         .spaceBetween,
                                                 children: [
-                                                  Text(
-                                                    dayName,
-                                                    style: const TextStyle(
-                                                      fontSize: 18,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: Colors.deepOrange,
-                                                    ),
+                                                  Row(
+                                                    children: [
+                                                      Text(
+                                                        dayName,
+                                                        style: TextStyle(
+                                                          fontSize: 18,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          color: isToday
+                                                              ? Colors.deepOrange.shade900
+                                                              : Colors.deepOrange,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      Text(
+                                                        '(${dayDate.day}.${dayDate.month}.)',
+                                                        style: TextStyle(
+                                                          fontSize: 13,
+                                                          color: isToday
+                                                              ? Colors.deepOrange.shade800
+                                                              : Colors.grey.shade600,
+                                                          fontWeight: isToday
+                                                              ? FontWeight.bold
+                                                              : FontWeight.normal,
+                                                        ),
+                                                      ),
+                                                      if (isToday) ...[
+                                                        const SizedBox(width: 8),
+                                                        Chip(
+                                                          label: const Text(
+                                                            'HEUTE',
+                                                            style: TextStyle(
+                                                              color: Colors.white,
+                                                              fontWeight:
+                                                                  FontWeight.bold,
+                                                              fontSize: 10,
+                                                            ),
+                                                          ),
+                                                          backgroundColor:
+                                                              Colors.deepOrange,
+                                                          visualDensity:
+                                                              VisualDensity.compact,
+                                                          padding:
+                                                              EdgeInsets.zero,
+                                                        ),
+                                                      ],
+                                                    ],
                                                   ),
                                                   if (widget.isTrainer)
                                                     IconButton(
@@ -420,10 +520,10 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                           'Übungen für $dayName auswählen',
                                                       onPressed: () =>
                                                           _editDaySchedule(
-                                                            plan,
-                                                            dayName,
-                                                            exercises,
-                                                          ),
+                                                        plan,
+                                                        dayName,
+                                                        exercises,
+                                                      ),
                                                     ),
                                                 ],
                                               ),
@@ -467,21 +567,21 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
 
                                                   final existingResults =
                                                       allResults.where((r) {
-                                                        return r.exerciseId ==
-                                                                ex.id &&
-                                                            r.dayOfWeek ==
-                                                                dayName &&
-                                                            r.weekNumber ==
-                                                                _currentWeekNumber &&
-                                                            r.year ==
-                                                                _currentYear;
-                                                      }).toList();
+                                                    return r.exerciseId ==
+                                                            ex.id &&
+                                                        r.dayOfWeek ==
+                                                            dayName &&
+                                                        r.weekNumber ==
+                                                            _currentWeekNumber &&
+                                                        r.year ==
+                                                            _currentYear;
+                                                  }).toList();
 
                                                   final ExerciseResult?
-                                                  existingResult =
+                                                      existingResult =
                                                       existingResults.isNotEmpty
-                                                      ? existingResults.first
-                                                      : null;
+                                                          ? existingResults.first
+                                                          : null;
 
                                                   final bool isDone =
                                                       existingResult != null;
@@ -537,13 +637,13 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                         leading: Icon(
                                                           isDone
                                                               ? Icons
-                                                                    .check_circle
+                                                                  .check_circle
                                                               : Icons
-                                                                    .fitness_center,
+                                                                  .fitness_center,
                                                           color: isDone
                                                               ? Colors.green
                                                               : Colors
-                                                                    .deepOrange,
+                                                                  .deepOrange,
                                                         ),
                                                         title: Row(
                                                           children: [
@@ -556,9 +656,9 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                                           .w600,
                                                                   decoration:
                                                                       isDone
-                                                                      ? TextDecoration
-                                                                            .lineThrough
-                                                                      : null,
+                                                                          ? TextDecoration
+                                                                              .lineThrough
+                                                                          : null,
                                                                 ),
                                                               ),
                                                             ),
@@ -567,8 +667,8 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                               Padding(
                                                                 padding:
                                                                     const EdgeInsets.only(
-                                                                      left: 6.0,
-                                                                    ),
+                                                                  left: 6.0,
+                                                                ),
                                                                 child: Chip(
                                                                   label: Text(
                                                                     targetText,
@@ -599,23 +699,22 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                           style: TextStyle(
                                                             color: isDone
                                                                 ? Colors
-                                                                      .green
-                                                                      .shade700
+                                                                    .green
+                                                                    .shade700
                                                                 : Colors
-                                                                      .grey
-                                                                      .shade700,
+                                                                    .grey
+                                                                    .shade700,
                                                             fontWeight: isDone
                                                                 ? FontWeight
-                                                                      .bold
+                                                                    .bold
                                                                 : FontWeight
-                                                                      .normal,
+                                                                    .normal,
                                                           ),
                                                         ),
                                                         trailing: Row(
                                                           mainAxisSize:
                                                               MainAxisSize.min,
                                                           children: [
-                                                            // NEU: TRAINER-NOTIZ BUTTON
                                                             if (widget
                                                                 .isTrainer)
                                                               IconButton(
@@ -626,9 +725,9 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                                               .note!
                                                                               .isNotEmpty
                                                                       ? Icons
-                                                                            .edit_note
+                                                                          .edit_note
                                                                       : Icons
-                                                                            .note_add_outlined,
+                                                                          .note_add_outlined,
                                                                   color: Colors
                                                                       .amber
                                                                       .shade900,
@@ -637,11 +736,11 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                                     'Trainer-Notiz bearbeiten',
                                                                 onPressed: () =>
                                                                     _showEditTrainerNoteDialog(
-                                                                      plan,
-                                                                      dayName,
-                                                                      scheduledEx,
-                                                                      ex.title,
-                                                                    ),
+                                                                  plan,
+                                                                  dayName,
+                                                                  scheduledEx,
+                                                                  ex.title,
+                                                                ),
                                                               ),
                                                             IconButton(
                                                               icon: const Icon(
@@ -670,16 +769,16 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                               ElevatedButton.icon(
                                                                 onPressed: () =>
                                                                     _showEnterOrEditResultDialog(
-                                                                      ex,
-                                                                      existingResult:
-                                                                          existingResult,
-                                                                    ),
+                                                                  ex,
+                                                                  existingResult:
+                                                                      existingResult,
+                                                                ),
                                                                 icon:
                                                                     const Icon(
-                                                                      Icons
-                                                                          .edit,
-                                                                      size: 16,
-                                                                    ),
+                                                                  Icons
+                                                                      .edit,
+                                                                  size: 16,
+                                                                ),
                                                                 label: const Text(
                                                                   'Korrigieren',
                                                                 ),
@@ -696,8 +795,8 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                               ElevatedButton.icon(
                                                                 onPressed: () =>
                                                                     _showEnterOrEditResultDialog(
-                                                                      ex,
-                                                                    ),
+                                                                  ex,
+                                                                ),
                                                                 icon: const Icon(
                                                                   Icons.check,
                                                                   size: 16,
@@ -717,8 +816,6 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                           ],
                                                         ),
                                                       ),
-
-                                                      // NEU: BEMERKUNG/NOTIZ DES TRAINERS UNTER DER ÜBUNG ANZEIGEN
                                                       if (scheduledEx.note !=
                                                               null &&
                                                           scheduledEx
@@ -727,24 +824,24 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                                                         Padding(
                                                           padding:
                                                               const EdgeInsets.only(
-                                                                left: 40.0,
-                                                                bottom: 8.0,
-                                                              ),
+                                                            left: 40.0,
+                                                            bottom: 8.0,
+                                                          ),
                                                           child: Container(
                                                             padding:
                                                                 const EdgeInsets.symmetric(
-                                                                  horizontal:
-                                                                      10,
-                                                                  vertical: 6,
-                                                                ),
+                                                              horizontal:
+                                                                  10,
+                                                              vertical: 6,
+                                                            ),
                                                             decoration: BoxDecoration(
                                                               color: Colors
                                                                   .amber
                                                                   .shade50,
                                                               borderRadius:
                                                                   BorderRadius.circular(
-                                                                    6,
-                                                                  ),
+                                                                6,
+                                                              ),
                                                               border: Border.all(
                                                                 color: Colors
                                                                     .amber

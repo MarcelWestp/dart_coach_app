@@ -8,6 +8,7 @@ import '../main.dart'; // Import für themeModeNotifier
 
 /// Profil-Bildschirm zur Verwaltung von Stammdaten, Equipment, Appearance & Sicherheit.
 /// Fügt sich ohne doppeltes Scaffold/AppBar nahtlos in die Hauptnavigation ein.
+/// Speziell für Smartphones und schmale Displays optimiert.
 class ProfileScreen extends StatefulWidget {
   final AppUser user;
 
@@ -59,6 +60,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _showStats = widget.user.showStats;
   }
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _clubController.dispose();
+    _teamController.dispose();
+    _dartsController.dispose();
+    _boardController.dispose();
+    _autodartsController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
   /// Berechnet das Treue-Abzeichen basierend auf dem Erstellungsdatum
   Map<String, dynamic> _calculateLoyaltyBadge(DateTime createdAt) {
     final now = DateTime.now();
@@ -106,6 +120,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           title: const Text('Profilbild ändern'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 'Gib die Web-Adresse (URL) deines Profilbilds ein:',
@@ -185,14 +200,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await _userService.updateUserProfile(updatedUser);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profil erfolgreich gespeichert!')),
+          const SnackBar(
+            content: Text('Profil erfolgreich gespeichert! 🎉'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Fehler beim Speichern: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fehler beim Speichern: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -221,7 +242,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fehler beim Ändern des Passworts: $e')),
+          SnackBar(
+            content: Text('Fehler beim Ändern des Passworts: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -229,43 +253,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  /// Erstellt den Kachel-Eintrag für die ThemeMode-Auswahl
+  /// Erstellt die Kachel für die ThemeMode-Auswahl (Mobil-optimiert)
   Widget _buildThemeDropdownTile(ThemeMode currentMode) {
     final ThemeService themeService = ThemeService();
 
     return ListTile(
+      contentPadding: EdgeInsets.zero,
       leading: Icon(
         currentMode == ThemeMode.dark
             ? Icons.dark_mode
             : (currentMode == ThemeMode.light
-                  ? Icons.light_mode
-                  : Icons.settings_brightness),
+                ? Icons.light_mode
+                : Icons.settings_brightness),
         color: Colors.deepOrange,
       ),
-      title: const Text('Design-Modus'),
+      title: const Text(
+        'Design-Modus',
+        style: TextStyle(fontWeight: FontWeight.w600),
+      ),
       trailing: DropdownButton<ThemeMode>(
         value: currentMode,
         underline: const SizedBox(),
         onChanged: (newMode) async {
           if (newMode != null) {
-            // 1. Live im UI umschalten
             themeModeNotifier.value = newMode;
-            // 2. Lokal auf dem Gerät dauerhaft speichern
             await themeService.saveThemeMode(newMode);
           }
         },
         items: const [
           DropdownMenuItem(
             value: ThemeMode.system,
-            child: Text('System-Standard'),
+            child: Text('System'),
           ),
           DropdownMenuItem(
             value: ThemeMode.light,
-            child: Text('Helles Design'),
+            child: Text('Helligkeit'),
           ),
           DropdownMenuItem(
             value: ThemeMode.dark,
-            child: Text('Dunkles Design (Darkmode)'),
+            child: Text('Dunkel (Dark)'),
           ),
         ],
       ),
@@ -290,16 +316,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       createdAt: widget.user.createdAt,
     );
 
-    // KEIN Scaffold und KEINE innere AppBar mehr!
-    // Stattdessen wird der Scroll-Inhalt direkt an den MainScreen übergeben.
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // KOPFBEREICH & AVATAR
+          // 1. KOPFBEREICH & AVATAR
           Card(
             elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
@@ -333,29 +360,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Text(
                           widget.user.name,
                           style: const TextStyle(
-                            fontSize: 20,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                         Text(
                           widget.user.email,
-                          style: const TextStyle(color: Colors.grey),
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 13,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 8),
                         Tooltip(
                           message: 'Registriert am $dateFormatted',
                           waitDuration: const Duration(milliseconds: 200),
                           child: Chip(
+                            visualDensity: VisualDensity.compact,
                             avatar: Icon(
                               badge['icon'] as IconData,
                               color: Colors.white,
-                              size: 18,
+                              size: 16,
                             ),
                             label: Text(
                               badge['label'] as String,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
+                                fontSize: 12,
                               ),
                             ),
                             backgroundColor: badge['color'] as Color,
@@ -368,18 +402,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
-          // ERSCHEINUNGSBILD
+          // 2. ERSCHEINUNGSBILD (DARK MODE TOGGLE)
           const Text(
             'Erscheinungsbild',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Padding(
               padding: const EdgeInsets.symmetric(
-                horizontal: 12.0,
+                horizontal: 16.0,
                 vertical: 4.0,
               ),
               child: ValueListenableBuilder<ThemeMode>(
@@ -390,9 +427,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
-          // STAMMDATEN & EQUIPMENT
+          // 3. STAMMDATEN & EQUIPMENT
           Form(
             key: _formKey,
             child: Column(
@@ -415,31 +452,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       val == null || val.isEmpty ? 'Bitte Name eingeben' : null,
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _clubController,
-                        decoration: const InputDecoration(
-                          labelText: 'Verein',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.groups_outlined),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _teamController,
-                        decoration: const InputDecoration(
-                          labelText: 'Team (z. B. Team A)',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.shield_outlined),
-                        ),
-                      ),
-                    ),
-                  ],
+
+                // RESPONSIVES LAYOUT FÜR VEREIN & TEAM
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth < 360) {
+                      // Schmale Bildschirme: Untereinander
+                      return Column(
+                        children: [
+                          TextFormField(
+                            controller: _clubController,
+                            decoration: const InputDecoration(
+                              labelText: 'Verein',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.groups_outlined),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _teamController,
+                            decoration: const InputDecoration(
+                              labelText: 'Team (z. B. Team A)',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.shield_outlined),
+                            ),
+                          ),
+                        ],
+                      );
+                    } else {
+                      // Normale Bildschirme: Nebeneinander
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _clubController,
+                              decoration: const InputDecoration(
+                                labelText: 'Verein',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.groups_outlined),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _teamController,
+                              decoration: const InputDecoration(
+                                labelText: 'Team (z. B. Team A)',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.shield_outlined),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                  },
                 ),
+
                 const SizedBox(height: 24),
                 const Text(
                   'Mein Darts-Equipment',
@@ -474,7 +544,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 20),
                 _isSaving
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.deepOrange,
+                        ),
+                      )
                     : ElevatedButton.icon(
                         onPressed: _saveProfile,
                         icon: const Icon(Icons.save),
@@ -483,22 +557,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           backgroundColor: Colors.deepOrange,
                           foregroundColor: Colors.white,
                           minimumSize: const Size(double.infinity, 48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
               ],
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
           const Divider(),
           const SizedBox(height: 16),
 
-          // PRIVATSPHÄRE-SEKTION
+          // 4. PRIVATSPHÄRE-SEKTION
           const Text(
             'Privatsphäre',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Column(
               children: [
                 SwitchListTile(
@@ -515,7 +595,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onChanged: (val) => setState(() => _isPrivate = val),
                 ),
                 const Divider(height: 1),
-                // NEU: SCHALTER FÜR ERFOLGE
                 SwitchListTile(
                   secondary: const Icon(
                     Icons.bar_chart,
@@ -536,7 +615,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const Divider(),
           const SizedBox(height: 16),
 
-          // PASSWORT ÄNDERN
+          // 5. PASSWORT ÄNDERN
           const Text(
             'Sicherheit & Passwort',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -576,7 +655,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 16),
                 _isChangingPassword
-                    ? const CircularProgressIndicator()
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.deepOrange,
+                        ),
+                      )
                     : OutlinedButton.icon(
                         onPressed: _changePassword,
                         icon: const Icon(Icons.security),
@@ -585,6 +668,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           foregroundColor: Colors.deepOrange,
                           side: const BorderSide(color: Colors.deepOrange),
                           minimumSize: const Size(double.infinity, 48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
               ],

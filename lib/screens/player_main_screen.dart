@@ -3,9 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_model.dart';
 import '../widgets/player_dashboard_widget.dart';
 import 'profile_screen.dart';
-import 'user_search_screen.dart'; // NEU: Import des Such-Screens
+import 'user_search_screen.dart';
+import 'x01_scorer_screen.dart'; // NEU: Import unseres X01-Scorers
 
-/// Haupt-Screen für Spieler inklusive Navigation zwischen Dashboard, Suche und Profil
+/// Haupt-Screen für Spieler inklusive Navigation zwischen Dashboard, X01 Scorer, Suche und Profil.
 class PlayerMainScreen extends StatefulWidget {
   final AppUser user;
 
@@ -16,36 +17,55 @@ class PlayerMainScreen extends StatefulWidget {
 }
 
 class _PlayerMainScreenState extends State<PlayerMainScreen> {
+  // Speichert den Index des aktuell ausgewählten Navigations-Tabs
   int _currentIndex = 0;
 
   @override
   Widget build(BuildContext context) {
-    // Liste der Seiten (jetzt mit Suche an zweiter Stelle)
+    // 1. Liste aller Hauptseiten für den Spieler (inklusive X01 Scorer)
     final List<Widget> pages = [
       PlayerDashboardWidget(user: widget.user),
-      UserSearchScreen(currentUser: widget.user), // NEU: Such-Screen
+      
+      // NEU: X01 Scorer Screen mit Daten aus dem aktuellen AppUser
+      X01ScorerScreen(
+        playerId: widget.user.uid,
+        playerName: widget.user.name, // Falls das Feld in AppUser anders heißt (z.B. displayName), hier anpassen
+      ),
+      
+      UserSearchScreen(currentUser: widget.user),
       ProfileScreen(user: widget.user),
     ];
 
-    // Titel für die AppBar je nach aktivem Tab
+    // 2. Passende Titel für die AppBar je nach aktivem Tab
     final List<String> titles = [
       'Dart Coach',
-      'Nutzer suchen', // NEU
+      'X01 Scorer',      // NEU
+      'Nutzer suchen',
       'Mein Profil',
     ];
 
     return Scaffold(
+      // KOPFZEILE (AppBar)
       appBar: AppBar(
         title: Text(titles[_currentIndex]),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Abmelden',
-            onPressed: () => FirebaseAuth.instance.signOut(),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+            },
           ),
         ],
       ),
-      body: pages[_currentIndex],
+
+      // HAUPTINHALT (State bleibt beim Wechsel erhalten)
+      body: IndexedStack(
+        index: _currentIndex,
+        children: pages,
+      ),
+
+      // UNTERE NAVIGATIONSLEISTE (Material 3 NavigationBar mit 4 Tabs)
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (int index) {
@@ -54,17 +74,28 @@ class _PlayerMainScreenState extends State<PlayerMainScreen> {
           });
         },
         destinations: const [
+          // Tab 1: Dashboard
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home, color: Colors.deepOrange),
             label: 'Dashboard',
           ),
-          // NEU: Navigations-Ziel für die Suche
+          
+          // Tab 2: NEU - X01 Scorer
+          NavigationDestination(
+            icon: Icon(Icons.gps_fixed_outlined),
+            selectedIcon: Icon(Icons.gps_fixed, color: Colors.deepOrange),
+            label: 'X01 Scorer',
+          ),
+          
+          // Tab 3: Nutzersuche
           NavigationDestination(
             icon: Icon(Icons.search_outlined),
             selectedIcon: Icon(Icons.search, color: Colors.deepOrange),
             label: 'Suche',
           ),
+          
+          // Tab 4: Profil
           NavigationDestination(
             icon: Icon(Icons.person_outline),
             selectedIcon: Icon(Icons.person, color: Colors.deepOrange),

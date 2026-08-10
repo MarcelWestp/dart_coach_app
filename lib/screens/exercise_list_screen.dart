@@ -6,7 +6,7 @@ import '../services/exercise_service.dart';
 import '../services/tag_service.dart';
 import 'tag_management_screen.dart';
 
-/// Verwaltung der Übungen inklusive Standard-Dauer/Durchläufen & Tag-Zuweisung.
+/// Verwaltung der Übungen inklusive Suche, Tag-Filterung, Standard-Dauer/Durchläufen & Tag-Zuweisung.
 class ExerciseListScreen extends StatefulWidget {
   const ExerciseListScreen({super.key});
 
@@ -17,6 +17,28 @@ class ExerciseListScreen extends StatefulWidget {
 class _ExerciseListScreenState extends State<ExerciseListScreen> {
   final ExerciseService _exerciseService = ExerciseService();
   final TagService _tagService = TagService();
+
+  // CONTROLLER & STATE FÜR SUCHE & FILTER
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String? _selectedTagId; // null = Alle Tags anzeigen
+
+  @override
+  void initState() {
+    super.initState();
+    // Live-Aktualisierung der Suche bei jeder Texteingabe
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.trim().toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   /// Dialog zum Erstellen oder Bearbeiten einer Übung
   void _showExerciseDialog({Exercise? exercise}) {
@@ -93,8 +115,9 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                         ),
                       ],
                       onChanged: (val) {
-                        if (val != null)
+                        if (val != null) {
                           setDialogState(() => selectedMetric = val);
+                        }
                       },
                     ),
                     const SizedBox(height: 16),
@@ -130,7 +153,9 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                             ],
                             onChanged: (val) {
                               if (val != null) {
-                                setDialogState(() => selectedTargetType = val);
+                                setDialogState(
+                                  () => selectedTargetType = val,
+                                );
                               }
                             },
                           ),
@@ -143,8 +168,8 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                               decoration: InputDecoration(
                                 hintText:
                                     selectedTargetType == TargetType.duration
-                                    ? 'z. B. 15 Min'
-                                    : 'z. B. 10 Serien',
+                                        ? 'z. B. 15 Min'
+                                        : 'z. B. 10 Serien',
                                 isDense: true,
                                 border: const OutlineInputBorder(),
                               ),
@@ -175,7 +200,8 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                         return Wrap(
                           spacing: 6,
                           children: availableTags.map((tag) {
-                            final isSelected = selectedTagIds.contains(tag.id);
+                            final isSelected =
+                                selectedTagIds.contains(tag.id);
                             return FilterChip(
                               label: Text(tag.name),
                               selected: isSelected,
@@ -247,7 +273,7 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // AKTIONSLEISTE OBEN
+        // 1. AKTIONSLEISTE OBEN
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           color: Theme.of(context).cardColor,
@@ -284,7 +310,104 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
 
         const Divider(height: 1),
 
-        // LISTE DER ÜBUNGEN
+        // 2. SUCHFELD FÜR TEXTSUCHE
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              labelText: 'Übungen durchsuchen...',
+              hintText: 'Titel oder Beschreibung',
+              prefixIcon: const Icon(Icons.search, color: Colors.deepOrange),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () => _searchController.clear(),
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.deepOrange, width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+            ),
+          ),
+        ),
+
+        // 3. TAG-FILTER-LEISTE OBEN
+        StreamBuilder<List<ExerciseTag>>(
+          stream: _tagService.getTags(),
+          builder: (context, tagSnapshot) {
+            final availableTags = tagSnapshot.data ?? [];
+            if (availableTags.isEmpty) return const SizedBox.shrink();
+
+            return Container(
+              height: 44,
+              margin: const EdgeInsets.only(bottom: 6),
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                children: [
+                  // Button "Alle Tags"
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6.0),
+                    child: ChoiceChip(
+                      label: const Text('Alle Tags'),
+                      selected: _selectedTagId == null,
+                      selectedColor: Colors.deepOrange,
+                      labelStyle: TextStyle(
+                        color: _selectedTagId == null
+                            ? Colors.white
+                            : Colors.black87,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      onSelected: (_) {
+                        setState(() {
+                          _selectedTagId = null;
+                        });
+                      },
+                    ),
+                  ),
+                  // FilterChips für jeden Tag aus der Datenbank
+                  ...availableTags.map((tag) {
+                    final isSelected = _selectedTagId == tag.id;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 6.0),
+                      child: FilterChip(
+                        label: Text(tag.name),
+                        selected: isSelected,
+                        selectedColor: tag.color.withOpacity(0.3),
+                        checkmarkColor: tag.color,
+                        avatar: CircleAvatar(
+                          backgroundColor: tag.color,
+                          radius: 5,
+                        ),
+                        labelStyle: TextStyle(
+                          color: isSelected ? Colors.black : Colors.black87,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                        onSelected: (selected) {
+                          setState(() {
+                            _selectedTagId = selected ? tag.id : null;
+                          });
+                        },
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            );
+          },
+        ),
+
+        // 4. LISTE DER GEFILTERTEN ÜBUNGEN
         Expanded(
           child: StreamBuilder<List<ExerciseTag>>(
             stream: _tagService.getTags(),
@@ -295,26 +418,71 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                 stream: _exerciseService.getExercises(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        color: Colors.deepOrange,
+                      ),
+                    );
                   }
 
-                  final exercises = snapshot.data ?? [];
+                  final allExercises = snapshot.data ?? [];
 
-                  if (exercises.isEmpty) {
-                    return const Center(
-                      child: Text(
-                        'Noch keine Übungen angelegt.\nKlicke oben auf "Neue Übung", um zu starten.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey),
+                  // COMBINED FILTERING (TEXT + TAGS)
+                  final filteredExercises = allExercises.where((ex) {
+                    // 1. Text-Match (Titel oder Beschreibung)
+                    final titleMatch =
+                        ex.title.toLowerCase().contains(_searchQuery);
+                    final descMatch =
+                        ex.description.toLowerCase().contains(_searchQuery);
+                    final textMatches = titleMatch || descMatch;
+
+                    // 2. Tag-Match
+                    bool tagMatches = true;
+                    if (_selectedTagId != null) {
+                      tagMatches = ex.tagIds.contains(_selectedTagId);
+                    }
+
+                    return textMatches && tagMatches;
+                  }).toList();
+
+                  if (filteredExercises.isEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              _searchQuery.isNotEmpty || _selectedTagId != null
+                                  ? Icons.search_off
+                                  : Icons.fitness_center,
+                              size: 56,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              _selectedTagId != null
+                                  ? 'Keine Übungen mit diesem Tag gefunden.'
+                                  : (_searchQuery.isEmpty
+                                      ? 'Noch keine Übungen angelegt.\nKlicke oben auf "Neue Übung", um zu starten.'
+                                      : 'Keine Übungen für "$_searchQuery" gefunden.'),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   }
 
                   return ListView.builder(
-                    padding: const EdgeInsets.all(12),
-                    itemCount: exercises.length,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    itemCount: filteredExercises.length,
                     itemBuilder: (context, index) {
-                      final ex = exercises[index];
+                      final ex = filteredExercises[index];
                       final assignedTags = tags
                           .where((t) => ex.tagIds.contains(t.id))
                           .toList();
@@ -332,6 +500,9 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                       return Card(
                         elevation: 2,
                         margin: const EdgeInsets.symmetric(vertical: 6),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         child: ListTile(
                           title: Row(
                             children: [
@@ -363,13 +534,33 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                             children: [
                               if (ex.description.isNotEmpty) ...[
                                 const SizedBox(height: 4),
-                                Text(ex.description),
+                                Text(
+                                  ex.description,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ],
-                              const SizedBox(height: 4),
-                              if (assignedTags.isNotEmpty)
-                                Wrap(
-                                  spacing: 4,
-                                  children: assignedTags.map((t) {
+                              const SizedBox(height: 6),
+                              Wrap(
+                                spacing: 4,
+                                runSpacing: 4,
+                                children: [
+                                  // Metrik-Badge
+                                  Chip(
+                                    label: Text(
+                                      ex.metricType.label,
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.deepOrange,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    backgroundColor: Colors.deepOrange.shade50,
+                                    visualDensity: VisualDensity.compact,
+                                    padding: EdgeInsets.zero,
+                                  ),
+                                  // Zugeordnete Tags
+                                  ...assignedTags.map((t) {
                                     return Chip(
                                       label: Text(
                                         t.name,
@@ -382,8 +573,9 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                                       visualDensity: VisualDensity.compact,
                                       padding: EdgeInsets.zero,
                                     );
-                                  }).toList(),
-                                ),
+                                  }),
+                                ],
+                              ),
                             ],
                           ),
                           trailing: Row(
